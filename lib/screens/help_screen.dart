@@ -4,6 +4,7 @@ import '../providers/app_state.dart';
 import '../theme/palette.dart';
 import '../theme/shadows.dart';
 import '../widgets/help_card.dart';
+import '../widgets/voice_assistant_modal.dart';
 
 class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key});
@@ -12,8 +13,37 @@ class HelpScreen extends StatefulWidget {
   State<HelpScreen> createState() => _HelpScreenState();
 }
 
-class _HelpScreenState extends State<HelpScreen> {
+class _HelpScreenState extends State<HelpScreen>
+    with SingleTickerProviderStateMixin {
   bool _pressed = false;
+
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  void _openVoiceAssistant() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withAlpha(140),
+      builder: (_) => const VoiceAssistantModal(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,24 +74,48 @@ class _HelpScreenState extends State<HelpScreen> {
           child: Column(children: [
             GestureDetector(
               onTapDown: (_) => setState(() => _pressed = true),
-              onTapUp: (_) => setState(() => _pressed = false),
+              onTapUp: (_) {
+                setState(() => _pressed = false);
+                _openVoiceAssistant();
+              },
               onTapCancel: () => setState(() => _pressed = false),
               child: AnimatedScale(
                 scale: _pressed ? 0.95 : 1.0,
                 duration: const Duration(milliseconds: 120),
                 curve: Curves.easeOut,
-                child: Container(
-                  width: 128, height: 128,
-                  decoration: BoxDecoration(color: AppColors.saffron600, shape: BoxShape.circle, boxShadow: kLiftShadow),
-                  child: const Icon(Icons.mic_rounded, size: 56, color: Colors.white),
+                child: SizedBox(
+                  width: 160, height: 160,
+                  child: AnimatedBuilder(
+                    animation: _pulse,
+                    builder: (context, _) {
+                      final t = _pulse.value;
+                      return Stack(alignment: Alignment.center, children: [
+                        Container(
+                          width: 128 + 28 * t, height: 128 + 28 * t,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.saffron600.withAlpha((130 * (1 - t)).round()),
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: 128, height: 128,
+                          decoration: BoxDecoration(color: AppColors.saffron600, shape: BoxShape.circle, boxShadow: kLiftShadow),
+                          child: const Icon(Icons.mic_rounded, size: 56, color: Colors.white),
+                        ),
+                      ]);
+                    },
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 20),
-            Text(s.askTitle, textAlign: TextAlign.center,
+            Text(s.voiceHelpTitle, textAlign: TextAlign.center,
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1.3, color: dark ? Colors.white : AppColors.ink900)),
             const SizedBox(height: 8),
-            Text(s.askSubtext, textAlign: TextAlign.center,
+            Text(s.voiceHelpSubtitle, textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, height: 1.6, color: dark ? AppColors.ink500 : AppColors.ink700)),
           ]),
         ),

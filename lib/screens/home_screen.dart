@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../providers/data_provider.dart';
@@ -21,8 +21,8 @@ class HomeScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AddProductCard(
-            title: s.addTitle,
-            subtext: s.addSubtext,
+            title: s.addProductTitle,
+            subtext: s.addProductSubtitle,
             buttonLabel: s.addButtonLabel,
           ),
           const SizedBox(height: 32),
@@ -36,11 +36,8 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 28),
           RecentOrders(
             title: s.recentOrders,
-            statusLabel: s.orderStatus,
-            whatsappLabel: s.whatsapp,
             language: app.language,
             orders: data.orders,
-            onManage: () => context.read<AppState>().triggerShipped(),
           ),
         ],
       ),

@@ -27,12 +27,32 @@ android {
     }
 
     androidResources {
-        noCompress.addAll(listOf("png", "jpg", "jpeg", "webp", "env", "json"))
+        noCompress.addAll(
+            listOf(
+                "png",
+                "jpg",
+                "jpeg",
+                "webp",
+                "env",
+                "json"
+            )
+        )
+    }
+
+    // Prevent release lint analysis from exhausting the Java heap.
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     buildTypes {
         release {
+            // Temporary/debug signing configuration.
             signingConfig = signingConfigs.getByName("debug")
+
+            // Disable R8/minification to reduce memory usage during the build.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

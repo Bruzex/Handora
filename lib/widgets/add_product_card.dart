@@ -3,7 +3,7 @@ import '../screens/capture_screen.dart';
 import '../theme/palette.dart';
 import '../theme/shadows.dart';
 
-/// Big circle CTA for camera + mic on the Home screen.
+/// Big camera CTA on the Home screen — opens the CaptureScreen flow.
 class AddProductCard extends StatefulWidget {
   final String title;
   final String subtext;
@@ -44,33 +44,32 @@ class _AddProductCardState extends State<AddProductCard> {
       ),
       child: Column(
         children: [
-          GestureDetector(
-            onTapDown: (_) => setState(() => _pressed = true),
-            onTapUp: (_) {
-              setState(() => _pressed = false);
-              _openCapture(context);
-            },
-            onTapCancel: () => setState(() => _pressed = false),
-            child: AnimatedScale(
-              scale: _pressed ? 0.95 : 1.0,
-              duration: const Duration(milliseconds: 120),
-              curve: Curves.easeOut,
-              child: Container(
-                width: 160,
-                height: 160,
-                decoration: const BoxDecoration(
-                  color: AppColors.saffron600,
-                  shape: BoxShape.circle,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.camera_alt_rounded, size: 56, color: Colors.white),
-                    const SizedBox(width: 12),
-                    Container(width: 1, height: 40, color: Colors.white38),
-                    const SizedBox(width: 12),
-                    const Icon(Icons.mic_rounded, size: 56, color: Colors.white),
-                  ],
+          Semantics(
+            label: widget.buttonLabel,
+            button: true,
+            child: GestureDetector(
+              onTapDown: (_) => setState(() => _pressed = true),
+              onTapUp: (_) {
+                setState(() => _pressed = false);
+                _openCapture(context);
+              },
+              onTapCancel: () => setState(() => _pressed = false),
+              child: AnimatedScale(
+                scale: _pressed ? 0.95 : 1.0,
+                duration: const Duration(milliseconds: 120),
+                curve: Curves.easeOut,
+                child: Container(
+                  width: 160,
+                  height: 160,
+                  decoration: const BoxDecoration(
+                    color: AppColors.saffron600,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.photo_camera_rounded,
+                    size: 72,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

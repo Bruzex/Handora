@@ -1,4 +1,4 @@
-import 'package:sqflite/sqflite.dart';
+﻿import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/product.dart';
 import '../models/order.dart';
@@ -30,9 +30,12 @@ class DatabaseHelper {
             id TEXT PRIMARY KEY,
             nameEn TEXT NOT NULL,
             nameHi TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            category TEXT NOT NULL DEFAULT 'Other',
             priceInRupees INTEGER NOT NULL,
             status TEXT NOT NULL,
-            image TEXT NOT NULL
+            image TEXT NOT NULL,
+            isSynced INTEGER NOT NULL DEFAULT 1
           )
         ''');
 
@@ -46,9 +49,44 @@ class DatabaseHelper {
             amountInRupees INTEGER NOT NULL,
             placedAt TEXT NOT NULL,
             thumbnail TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'new'
+            status TEXT NOT NULL DEFAULT 'new',
+            buyerName TEXT NOT NULL DEFAULT 'Valued Customer',
+            buyerPhone TEXT NOT NULL DEFAULT '919876543210',
+            createdAt TEXT NOT NULL DEFAULT ''
           )
         ''');
+      },
+      onOpen: (db) async {
+        try {
+          await db.execute(
+            'ALTER TABLE products ADD COLUMN isSynced INTEGER NOT NULL DEFAULT 1',
+          );
+        } catch (_) {}
+        try {
+          await db.execute(
+            "ALTER TABLE products ADD COLUMN description TEXT NOT NULL DEFAULT ''",
+          );
+        } catch (_) {}
+        try {
+          await db.execute(
+            "ALTER TABLE products ADD COLUMN category TEXT NOT NULL DEFAULT 'Other'",
+          );
+        } catch (_) {}
+        try {
+          await db.execute(
+            "ALTER TABLE orders ADD COLUMN buyerName TEXT NOT NULL DEFAULT 'Valued Customer'",
+          );
+        } catch (_) {}
+        try {
+          await db.execute(
+            "ALTER TABLE orders ADD COLUMN buyerPhone TEXT NOT NULL DEFAULT '919876543210'",
+          );
+        } catch (_) {}
+        try {
+          await db.execute(
+            "ALTER TABLE orders ADD COLUMN createdAt TEXT NOT NULL DEFAULT ''",
+          );
+        } catch (_) {}
       },
     );
   }
@@ -95,6 +133,12 @@ class DatabaseHelper {
     final db = await database;
     return db.update('orders', {'status': status},
         where: 'dbId = ?', whereArgs: [dbId]);
+  }
+
+  Future<int> updateOrder(Order order) async {
+    final db = await database;
+    return db.update('orders', order.toMap(),
+        where: 'dbId = ?', whereArgs: [order.dbId]);
   }
 
   Future<int> deleteOrder(int dbId) async {

@@ -12,7 +12,7 @@ class NavLabels {
 
 class DashboardStrings {
   // Home
-  final String addTitle, addSubtext, addButtonLabel;
+  final String addProductTitle, addProductSubtitle, addButtonLabel;
   final String overview, salesLabel, productsLabel;
   final String recentOrders, orderStatus, whatsapp;
 
@@ -29,7 +29,10 @@ class DashboardStrings {
 
   // Help / Support
   final String supportTitle, supportTitleAlt;
-  final String askTitle, askSubtext, askButtonLabel;
+  final String voiceHelpTitle, voiceHelpSubtitle;
+  final String listeningStatus, processingStatus, voiceStopSubmit;
+  final String voiceAnswerTitle, voicePlay, voicePause, voiceTryAgain;
+  final String voiceErrorMic, voiceErrorNetwork, voiceErrorGeneric;
   final String whatsappHelpTitle, whatsappHelpText;
   final String tutorialTitle, tutorialText, playLabel;
   final String callTitle, callNumber;
@@ -45,7 +48,7 @@ class DashboardStrings {
   final NavLabels nav;
 
   const DashboardStrings({
-    required this.addTitle, required this.addSubtext, required this.addButtonLabel,
+    required this.addProductTitle, required this.addProductSubtitle, required this.addButtonLabel,
     required this.overview, required this.salesLabel, required this.productsLabel,
     required this.recentOrders, required this.orderStatus, required this.whatsapp,
     required this.catalogTitle, required this.addNewProduct,
@@ -56,7 +59,11 @@ class DashboardStrings {
     required this.chartTitle, required this.peakLabel,
     required this.totalOrdersLabel, required this.avgOrderLabel,
     required this.supportTitle, required this.supportTitleAlt,
-    required this.askTitle, required this.askSubtext, required this.askButtonLabel,
+    required this.voiceHelpTitle, required this.voiceHelpSubtitle,
+    required this.listeningStatus, required this.processingStatus, required this.voiceStopSubmit,
+    required this.voiceAnswerTitle, required this.voicePlay, required this.voicePause,
+    required this.voiceTryAgain, required this.voiceErrorMic,
+    required this.voiceErrorNetwork, required this.voiceErrorGeneric,
     required this.whatsappHelpTitle, required this.whatsappHelpText,
     required this.tutorialTitle, required this.tutorialText, required this.playLabel,
     required this.callTitle, required this.callNumber,
@@ -70,9 +77,9 @@ class DashboardStrings {
 
 const kStrings = <Language, DashboardStrings>{
   Language.en: DashboardStrings(
-    addTitle: 'Snap & Speak to Add Product',
-    addSubtext: 'No typing required. AI will do the rest.',
-    addButtonLabel: 'Add a product using camera and voice',
+    addProductTitle: 'Snap to Add Product',
+    addProductSubtitle: 'Take a photo. AI will do the rest.',
+    addButtonLabel: 'Add a product using your camera',
     overview: 'Business Overview',
     salesLabel: "Today's Sales",
     productsLabel: 'Active Products',
@@ -95,9 +102,18 @@ const kStrings = <Language, DashboardStrings>{
     avgOrderLabel: 'Avg. Order Value',
     supportTitle: 'Need Help?',
     supportTitleAlt: 'सहायता',
-    askTitle: 'Tap to Ask Anything in Your Language',
-    askSubtext: 'No typing needed. Speak your query.',
-    askButtonLabel: 'Tap to ask your question by voice',
+    voiceHelpTitle: 'Ask AI Assistant',
+    voiceHelpSubtitle: 'Tap to speak your question in Hindi or English',
+    listeningStatus: 'Listening...',
+    processingStatus: 'Thinking...',
+    voiceStopSubmit: 'Stop & Submit',
+    voiceAnswerTitle: 'AI Answer',
+    voicePlay: 'Play answer',
+    voicePause: 'Pause',
+    voiceTryAgain: 'Try Again',
+    voiceErrorMic: "We couldn't access your microphone. Please allow mic access and try again.",
+    voiceErrorNetwork: "We couldn't reach the AI assistant. Please check your internet and try again.",
+    voiceErrorGeneric: 'Something went wrong. Please try again.',
     whatsappHelpTitle: 'Chat on WhatsApp Support',
     whatsappHelpText: 'Get 24/7 instant help on WhatsApp',
     tutorialTitle: 'Audio Tutorial: How to sell on ONDC',
@@ -118,9 +134,9 @@ const kStrings = <Language, DashboardStrings>{
   ),
 
   Language.hi: DashboardStrings(
-    addTitle: 'फ़ोटो लें और बोलें',
-    addSubtext: 'टाइप करने की ज़रूरत नहीं। बाकी काम AI करेगा।',
-    addButtonLabel: 'कैमरा और आवाज़ से उत्पाद जोड़ें',
+    addProductTitle: 'फोटो खींचकर प्रोडक्ट जोड़ें',
+    addProductSubtitle: 'बस एक फोटो लें, AI बाकी काम संभाल लेगा।',
+    addButtonLabel: 'कैमरे से नया उत्पाद जोड़ें',
     overview: 'व्यापार का हाल',
     salesLabel: 'आज की बिक्री',
     productsLabel: 'चालू उत्पाद',
@@ -143,9 +159,18 @@ const kStrings = <Language, DashboardStrings>{
     avgOrderLabel: 'औसत ऑर्डर',
     supportTitle: 'सहायता',
     supportTitleAlt: 'Need Help?',
-    askTitle: 'अपनी भाषा में कुछ भी पूछें',
-    askSubtext: 'टाइप करने की ज़रूरत नहीं। बस बोलिए।',
-    askButtonLabel: 'बोलकर सवाल पूछने के लिए दबाएँ',
+    voiceHelpTitle: 'AI असिस्टेंट से पूछें',
+    voiceHelpSubtitle: 'बोलकर अपनी समस्या या सवाल बताएं',
+    listeningStatus: 'सुन रहा हूँ...',
+    processingStatus: 'सोच रहा हूँ...',
+    voiceStopSubmit: 'रोकें और भेजें',
+    voiceAnswerTitle: 'AI का जवाब',
+    voicePlay: 'जवाब सुनें',
+    voicePause: 'रोकें',
+    voiceTryAgain: 'फिर कोशिश करें',
+    voiceErrorMic: 'माइक्रोफ़ोन नहीं खुल पाया। कृपया माइक की अनुमति दें और दोबारा कोशिश करें।',
+    voiceErrorNetwork: 'AI असिस्टेंट से संपर्क नहीं हो पाया। कृपया इंटरनेट जाँचें और दोबारा कोशिश करें।',
+    voiceErrorGeneric: 'कुछ गड़बड़ हो गई। कृपया दोबारा कोशिश करें।',
     whatsappHelpTitle: 'WhatsApp पर बात करें',
     whatsappHelpText: '24/7 तुरंत मदद पाएँ',
     tutorialTitle: 'ऑडियो गाइड: ONDC पर कैसे बेचें',

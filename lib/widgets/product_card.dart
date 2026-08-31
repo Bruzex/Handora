@@ -1,9 +1,12 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../l10n/strings.dart';
 import '../models/product.dart';
+import '../providers/data_provider.dart';
 import '../theme/palette.dart';
 import '../theme/shadows.dart';
+import 'edit_voice_info_modal.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -68,11 +71,79 @@ class ProductCard extends StatelessWidget {
     }
   }
 
+  void _openVoiceEdit(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => EditVoiceInfoModal(product: product),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context, String productName) {
+    final isHi = language == Language.hi;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          isHi ? 'उत्पाद हटाएं?' : 'Delete Product?',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        content: Text(
+          isHi
+              ? 'क्या आप वाकई "$productName" को अपने कैटलॉग और ONDC से हटाना चाहते हैं?'
+              : 'Are you sure you want to remove "$productName" from your catalog & ONDC?',
+          style: const TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              isHi ? 'रद्द करें' : 'Cancel',
+              style: const TextStyle(color: AppColors.ink500, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.red600,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await context.read<DataProvider>().deleteProduct(product.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isHi
+                          ? 'उत्पाद कैटलॉग और ONDC से हटा दिया गया'
+                          : 'Product removed from catalog & ONDC',
+                    ),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: Text(
+              isHi ? 'हटाएं' : 'Delete',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final live = product.status == ProductStatus.live;
     final name = language == Language.hi ? product.nameHi : product.nameEn;
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final isSynced = product.isSynced;
 
     return Container(
       decoration: BoxDecoration(
@@ -85,19 +156,86 @@ class ProductCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: _buildImage(product.image),
+          Stack(
+            children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: _buildImage(product.image),
+              ),
+
+              // Unsynced / Offline badge indicator overlay
+              if (!isSynced)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.amber600,
+                      borderRadius: BorderRadius.circular(100),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(50),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.cloud_off_rounded,
+                          size: 12,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          language == Language.hi ? 'सिंक बाकी' : 'Offline',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Delete icon button top right
+              Positioned(
+                top: 8,
+                right: 8,
+                child: GestureDetector(
+                  onTap: () => _showDeleteDialog(context, name),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha(120),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // Status badge
+                // Status badge (Amber for unsynced, Green for Live on ONDC, Gray for Draft)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: live ? AppColors.green50 : AppColors.ink200.withAlpha(153),
+                    color: !isSynced
+                        ? AppColors.amber100
+                        : (live ? AppColors.green50 : AppColors.ink200.withAlpha(153)),
                     borderRadius: BorderRadius.circular(100),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -105,17 +243,23 @@ class ProductCard extends StatelessWidget {
                       width: 6,
                       height: 6,
                       decoration: BoxDecoration(
-                        color: live ? AppColors.green600 : AppColors.ink500,
+                        color: !isSynced
+                            ? AppColors.amber600
+                            : (live ? AppColors.green600 : AppColors.ink500),
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      live ? strings.statusLive : strings.statusDraft,
+                      !isSynced
+                          ? (language == Language.hi ? 'सिंक होना बाकी' : 'Pending Sync')
+                          : (live ? strings.statusLive : strings.statusDraft),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: live ? AppColors.green800 : AppColors.ink700,
+                        color: !isSynced
+                            ? AppColors.amber600
+                            : (live ? AppColors.green800 : AppColors.ink700),
                       ),
                     ),
                   ]),
@@ -143,31 +287,34 @@ class ProductCard extends StatelessWidget {
                 ),
                 const Spacer(),
 
-                // Action button — filled for live, outlined for draft
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: live ? AppColors.saffron600 : (dark ? AppColors.ink800 : Colors.white),
-                    borderRadius: BorderRadius.circular(12),
-                    border: live ? null : Border.all(color: AppColors.saffron600, width: 2),
-                  ),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(
-                      live ? Icons.mic_rounded : Icons.edit_rounded,
-                      size: 16,
-                      color: live ? Colors.white : AppColors.saffron700,
+                // Action button — opens Edit Voice Info modal
+                GestureDetector(
+                  onTap: () => _openVoiceEdit(context),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: live ? AppColors.saffron600 : (dark ? AppColors.ink800 : Colors.white),
+                      borderRadius: BorderRadius.circular(12),
+                      border: live ? null : Border.all(color: AppColors.saffron600, width: 2),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      live ? strings.editVoiceInfo : strings.completeListing,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(
+                        live ? Icons.mic_rounded : Icons.edit_rounded,
+                        size: 16,
                         color: live ? Colors.white : AppColors.saffron700,
                       ),
-                    ),
-                  ]),
+                      const SizedBox(width: 6),
+                      Text(
+                        live ? strings.editVoiceInfo : strings.completeListing,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: live ? Colors.white : AppColors.saffron700,
+                        ),
+                      ),
+                    ]),
+                  ),
                 ),
               ]),
             ),
