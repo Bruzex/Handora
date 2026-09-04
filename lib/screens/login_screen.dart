@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../l10n/strings.dart';
 import '../providers/app_state.dart';
 import '../theme/palette.dart';
+import 'email_login_screen.dart';
 import 'otp_verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -188,11 +189,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     icon: Icons.mail_outline_rounded,
                     label: 'Continue with Email',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Email login flow initiated'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
+                      Navigator.pushNamed(
+                        context,
+                        EmailLoginScreen.routeName,
                       );
                     },
                   ),

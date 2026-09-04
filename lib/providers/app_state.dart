@@ -1,4 +1,5 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../l10n/strings.dart';
 
 enum NavTab { home, catalog, growth, help }
@@ -12,7 +13,13 @@ class AppState extends ChangeNotifier {
   bool _showShipped = false;
   bool _isAuthenticated = false;
 
+  // User profile (populated from Supabase session)
+  String? _userDisplayName;
+  String? _userEmail;
+
   bool get isAuthenticated => _isAuthenticated;
+  String? get userDisplayName => _userDisplayName;
+  String? get userEmail => _userEmail;
   Language get language => _language;
   NavTab get tab => _tab;
   bool get isDark => _isDark;
@@ -21,13 +28,46 @@ class AppState extends ChangeNotifier {
 
   DashboardStrings get strings => kStrings[_language]!;
 
+  /// Call after Supabase auth succeeds or on session restore.
+  /// Reads display name and email from the current Supabase user.
+  void loginFromSession() {
+    _isAuthenticated = true;
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        _userEmail = user.email;
+        final meta = user.userMetadata;
+        final name = meta?['full_name'] as String?;
+        _userDisplayName = (name != null && name.isNotEmpty) ? name : _userEmail;
+      }
+    } catch (_) {
+      // Supabase may not be initialized
+    }
+    notifyListeners();
+  }
+
+  /// Legacy login (used by OTP flow which has no Supabase session)
   void login() {
     _isAuthenticated = true;
     notifyListeners();
   }
 
+  /// Sign out: clears Supabase session and resets local state.
+  Future<void> signOut() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {}
+    _isAuthenticated = false;
+    _userDisplayName = null;
+    _userEmail = null;
+    _tab = NavTab.home;
+    notifyListeners();
+  }
+
   void logout() {
     _isAuthenticated = false;
+    _userDisplayName = null;
+    _userEmail = null;
     notifyListeners();
   }
 

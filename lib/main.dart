@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +11,8 @@ import 'widgets/bottom_nav.dart';
 import 'widgets/new_order_toast.dart';
 import 'widgets/order_shipped_modal.dart';
 import 'screens/login_screen.dart';
+import 'screens/email_login_screen.dart';
+import 'screens/signup_screen.dart';
 import 'screens/otp_verification_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/catalog_screen.dart';
@@ -46,7 +48,7 @@ Future<void> main() async {
     try {
       await Supabase.initialize(
         url: supabaseUrl,
-        anonKey: supabaseAnonKey,
+        publishableKey: supabaseAnonKey,
       );
     } catch (e) {
       debugPrint('⚠️ Supabase init warning: $e');
@@ -63,7 +65,33 @@ class HandoraApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AppState()),
+        ChangeNotifierProvider(create: (_) {
+          final appState = AppState();
+          // Restore session: if Supabase has an active session, auto-login
+          try {
+            final session = Supabase.instance.client.auth.currentSession;
+            if (session != null) {
+              appState.loginFromSession();
+            }
+            // Listen to auth state changes and sync AppState
+            Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+              final event = data.event;
+              if (event == AuthChangeEvent.signedIn ||
+                  event == AuthChangeEvent.tokenRefreshed) {
+                if (!appState.isAuthenticated) {
+                  appState.loginFromSession();
+                }
+              } else if (event == AuthChangeEvent.signedOut) {
+                if (appState.isAuthenticated) {
+                  appState.logout();
+                }
+              }
+            });
+          } catch (_) {
+            // Supabase may not be initialized if env keys were missing
+          }
+          return appState;
+        }),
         ChangeNotifierProvider(create: (_) {
           final dp = DataProvider();
           dp.init(); // seeds DB on first launch, loads data
@@ -92,6 +120,8 @@ class _Root extends StatelessWidget {
       routes: {
         '/': (context) => const _Shell(),
         LoginScreen.routeName: (context) => const LoginScreen(),
+        EmailLoginScreen.routeName: (context) => const EmailLoginScreen(),
+        SignUpScreen.routeName: (context) => const SignUpScreen(),
         OtpVerificationScreen.routeName: (context) {
           final args =
               ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
