@@ -163,4 +163,5 @@ Built for **Smart India Hackathon (SIH)** — empowering rural Indian artisans w
 ## 📄 License
 
 Copyright (c) 2026 **Bruzex**. All rights reserved.
+
 This project is built for the SIH hackathon demonstration.
