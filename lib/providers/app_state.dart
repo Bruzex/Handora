@@ -1,16 +1,18 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import '../l10n/strings.dart';
 
 enum NavTab { home, catalog, growth, help }
 
-/// Handles UI-level state: active tab, language, theme, overlay visibility.
+/// Handles UI-level state: active tab, language, theme, auth, overlay visibility.
 class AppState extends ChangeNotifier {
   Language _language = Language.en;
   NavTab _tab = NavTab.home;
   bool _isDark = false;
   bool _showToast = true;
   bool _showShipped = false;
+  bool _isAuthenticated = false;
 
+  bool get isAuthenticated => _isAuthenticated;
   Language get language => _language;
   NavTab get tab => _tab;
   bool get isDark => _isDark;
@@ -18,6 +20,16 @@ class AppState extends ChangeNotifier {
   bool get showShipped => _showShipped;
 
   DashboardStrings get strings => kStrings[_language]!;
+
+  void login() {
+    _isAuthenticated = true;
+    notifyListeners();
+  }
+
+  void logout() {
+    _isAuthenticated = false;
+    notifyListeners();
+  }
 
   void setLanguage(Language lang) {
     if (_language == lang) return;

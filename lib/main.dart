@@ -1,14 +1,17 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/app_state.dart';
 import 'providers/data_provider.dart';
-import 'theme/handora_theme.dart';
+import 'theme/app_theme.dart';
 import 'widgets/app_header.dart';
 import 'widgets/bottom_nav.dart';
 import 'widgets/new_order_toast.dart';
 import 'widgets/order_shipped_modal.dart';
+import 'screens/login_screen.dart';
+import 'screens/otp_verification_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/catalog_screen.dart';
 import 'screens/growth_screen.dart';
@@ -17,18 +20,37 @@ import 'screens/help_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Set system UI overlay style to match Gramin Modernism Ivory theme
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: AppColors.surfaceIvory,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
+
   // Load environment variables (.env)
-  await dotenv.load(fileName: '.env');
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (e) {
+    debugPrint('⚠️ Warning: .env file not found or could not be loaded: $e');
+  }
 
   // Initialize Supabase
   final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
   final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
 
   if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
-    await Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: supabaseAnonKey,
-    );
+    try {
+      await Supabase.initialize(
+        url: supabaseUrl,
+        anonKey: supabaseAnonKey,
+      );
+    } catch (e) {
+      debugPrint('⚠️ Supabase init warning: $e');
+    }
   }
 
   runApp(const HandoraApp());
@@ -63,10 +85,21 @@ class _Root extends StatelessWidget {
     return MaterialApp(
       title: 'Handora',
       debugShowCheckedModeBanner: false,
-      theme: lightTheme(),
-      darkTheme: darkTheme(),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       themeMode: app.isDark ? ThemeMode.dark : ThemeMode.light,
-      home: const _Shell(),
+      initialRoute: app.isAuthenticated ? '/' : LoginScreen.routeName,
+      routes: {
+        '/': (context) => const _Shell(),
+        LoginScreen.routeName: (context) => const LoginScreen(),
+        OtpVerificationScreen.routeName: (context) {
+          final args =
+              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          final phoneNumber =
+              args?['phoneNumber'] as String? ?? '+91 98765 43210';
+          return OtpVerificationScreen(phoneNumber: phoneNumber);
+        },
+      },
     );
   }
 }
