@@ -1,4 +1,4 @@
-﻿name: handora
+name: bruprog_handora
 
 description: "Handora - artisan seller dashboard for ONDC."
 
@@ -58,6 +58,7 @@ dev_dependencies:
 
   sqflite_common_ffi: ^2.3.4+4
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 dependency_overrides:
   record_platform_interface: 1.2.0
@@ -67,4 +68,5 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/icon/
     - .env

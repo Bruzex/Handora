@@ -1,7 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:handora/main.dart';
+import 'package:bruprog_handora/main.dart';
 
 void main() {
   setUpAll(() async {
