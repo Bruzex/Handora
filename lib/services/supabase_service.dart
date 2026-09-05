@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -7,6 +7,15 @@ import '../models/product.dart';
 class SupabaseService {
   static SupabaseClient get _client => Supabase.instance.client;
   static const _bucket = 'product-images';
+
+  /// Returns the current authenticated user's id, or null if not logged in.
+  static String? get currentUserId {
+    try {
+      return _client.auth.currentUser?.id;
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Extracts the storage object path/filename from a Supabase public CDN URL.
   static String? _extractStorageFileName(String imageUrl) {
@@ -46,6 +55,7 @@ class SupabaseService {
   }
 
   /// Insert product into Supabase database table with public HTTP image URL.
+  /// Always writes the current authenticated user's id into 'user_id'.
   static Future<void> insertProduct({
     required String nameEn,
     required String nameHi,
@@ -54,6 +64,11 @@ class SupabaseService {
     required int priceInRupees,
     required String imageUrl,
   }) async {
+    final userId = currentUserId;
+    if (userId == null) {
+      debugPrint('⚠️ No authenticated user — skipping Supabase insert');
+      return;
+    }
     try {
       await _client.from('products').insert({
         'name_en': nameEn,
@@ -63,16 +78,19 @@ class SupabaseService {
         'price_in_rupees': priceInRupees,
         'status': 'live',
         'image_url': imageUrl,
+        'user_id': userId,
       });
-      debugPrint('✅ Inserted product into Supabase table with public URL: $imageUrl');
+      debugPrint('✅ Inserted product into Supabase table for user $userId');
     } catch (e) {
       debugPrint('❌ Supabase insert failed: $e');
       rethrow;
     }
   }
 
-  /// Update product in Supabase database table.
+  /// Update product in Supabase database table (scoped by user_id).
   static Future<void> updateProduct(Product product) async {
+    final userId = currentUserId;
+    if (userId == null) return;
     try {
       await _client.from('products').update({
         'name_en': product.nameEn,
@@ -81,7 +99,7 @@ class SupabaseService {
         'category': product.category,
         'price_in_rupees': product.priceInRupees,
         'status': product.status.name,
-      }).eq('id', product.id);
+      }).eq('id', product.id).eq('user_id', userId);
       debugPrint('✅ Updated product in Supabase table: ${product.id}');
     } catch (e) {
       debugPrint('⚠️ Supabase update failed: $e');
@@ -92,7 +110,7 @@ class SupabaseService {
   /// Delete product database record and associated image file from Supabase Storage.
   static Future<void> deleteProduct({required String id, String? imageUrl}) async {
     try {
-      // 1. Delete database row from products table
+      // 1. Delete database row from products table (RLS will enforce ownership)
       await _client.from('products').delete().eq('id', id);
 
       // 2. If imageUrl is a valid Supabase Storage URL, remove file from bucket
@@ -110,11 +128,15 @@ class SupabaseService {
     }
   }
 
-  /// Fetch all products from Supabase ordered by creation date.
+  /// Fetch products from Supabase for the current authenticated user only.
   static Future<List<Product>> fetchProducts() async {
+    final userId = currentUserId;
+    if (userId == null) return [];
+
     final data = await _client
         .from('products')
         .select()
+        .eq('user_id', userId)
         .order('created_at', ascending: false);
 
     return (data as List).map((row) {
@@ -128,7 +150,9 @@ class SupabaseService {
         status: ProductStatus.live,
         image: row['image_url'] as String? ?? '',
         isSynced: true,
+        userId: userId,
       );
     }).toList();
   }
 }
+

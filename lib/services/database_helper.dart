@@ -1,4 +1,4 @@
-﻿import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/product.dart';
 import '../models/order.dart';
@@ -87,6 +87,12 @@ class DatabaseHelper {
             "ALTER TABLE orders ADD COLUMN createdAt TEXT NOT NULL DEFAULT ''",
           );
         } catch (_) {}
+        // Per-user product isolation: add userId column
+        try {
+          await db.execute(
+            "ALTER TABLE products ADD COLUMN userId TEXT NOT NULL DEFAULT ''",
+          );
+        } catch (_) {}
       },
     );
   }
@@ -102,6 +108,18 @@ class DatabaseHelper {
   Future<List<Product>> queryAllProducts() async {
     final db = await database;
     final rows = await db.query('products');
+    return rows.map(Product.fromMap).toList();
+  }
+
+  /// Query products scoped to a specific user id.
+  /// If userId is empty, returns products with empty userId (seed/mock-OTP data).
+  Future<List<Product>> queryProductsForUser(String userId) async {
+    final db = await database;
+    final rows = await db.query(
+      'products',
+      where: 'userId = ?',
+      whereArgs: [userId],
+    );
     return rows.map(Product.fromMap).toList();
   }
 

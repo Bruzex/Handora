@@ -20,6 +20,15 @@ class AppState extends ChangeNotifier {
   bool get isAuthenticated => _isAuthenticated;
   String? get userDisplayName => _userDisplayName;
   String? get userEmail => _userEmail;
+
+  /// Current Supabase auth user id (null for mock-OTP or unauthenticated).
+  String? get currentUserId {
+    try {
+      return Supabase.instance.client.auth.currentUser?.id;
+    } catch (_) {
+      return null;
+    }
+  }
   Language get language => _language;
   NavTab get tab => _tab;
   bool get isDark => _isDark;

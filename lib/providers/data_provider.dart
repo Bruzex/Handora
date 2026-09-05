@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -20,6 +20,7 @@ class DataProvider extends ChangeNotifier {
   bool _initialized = false;
   bool _isProcessingAi = false;
   bool _isSyncing = false;
+  String _currentUserId = '';
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   List<Product> get products => _products;
@@ -28,6 +29,7 @@ class DataProvider extends ChangeNotifier {
   bool get initialized => _initialized;
   bool get isProcessingAi => _isProcessingAi;
   bool get isSyncing => _isSyncing;
+  String get currentUserId => _currentUserId;
 
   int get productCount => _products.length + (_isProcessingAi ? 1 : 0);
   int get activeProductCount =>
@@ -88,8 +90,9 @@ class DataProvider extends ChangeNotifier {
     syncOfflineProducts();
   }
 
+  /// Loads products scoped to the current user id from local SQLite.
   Future<void> loadProducts() async {
-    _products = await _db.queryAllProducts();
+    _products = await _db.queryProductsForUser(_currentUserId);
     notifyListeners();
   }
 
@@ -98,8 +101,12 @@ class DataProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Adds a product, auto-setting userId to current user.
   Future<void> addProduct(Product product) async {
-    await _db.insertProduct(product);
+    final toInsert = product.userId.isEmpty
+        ? product.copyWith(userId: _currentUserId)
+        : product;
+    await _db.insertProduct(toInsert);
     await loadProducts();
   }
 
@@ -118,7 +125,7 @@ class DataProvider extends ChangeNotifier {
     await loadProducts();
   }
 
-  /// Syncs any offline / pending products to Supabase Storage and database.
+  /// Syncs any offline / pending products (for current user) to Supabase Storage and database.
   Future<void> syncOfflineProducts() async {
     if (_isSyncing) return;
     final unsynced = _products.where((p) => !p.isSynced).toList();
@@ -160,6 +167,7 @@ class DataProvider extends ChangeNotifier {
             status: p.status,
             image: publicUrl,
             isSynced: true,
+            userId: p.userId,
           );
           await _db.updateProduct(updated);
           debugPrint('✅ Synced offline product ${p.id} to Supabase');
@@ -196,6 +204,37 @@ class DataProvider extends ChangeNotifier {
     await loadProducts();
   }
 
+  /// Clears the in-memory product list (called on logout).
+  void clearProducts() {
+    _products = [];
+    _currentUserId = '';
+    notifyListeners();
+  }
+
+  /// Sets the current user id and reloads products for that user.
+  /// Called on login / session restore.
+  Future<void> reloadForUser(String userId) async {
+    _currentUserId = userId;
+    await loadProducts();
+
+    if (userId.isNotEmpty) {
+      try {
+        final remoteProducts = await SupabaseService.fetchProducts();
+        for (final p in remoteProducts) {
+          await _db.insertProduct(p);
+        }
+        if (remoteProducts.isNotEmpty) {
+          await loadProducts();
+        }
+      } catch (e) {
+        debugPrint('⚠️ Remote product fetch on reload: $e');
+      }
+    }
+
+    // Also trigger background sync for any pending products
+    syncOfflineProducts();
+  }
+
   /// Updates an order status in local SQLite and refreshes orders.
   Future<void> updateOrderStatus(int dbId, String status) async {
     await _db.updateOrderStatus(dbId, status);
@@ -213,3 +252,4 @@ class DataProvider extends ChangeNotifier {
     super.dispose();
   }
 }
+

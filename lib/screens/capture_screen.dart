@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -52,6 +52,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
     if (_image == null) return;
 
     final dataProvider = context.read<DataProvider>();
+    final appState = context.read<AppState>();
     dataProvider.setProcessingAi(true);
 
     setState(() {
@@ -118,6 +119,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
         status: ProductStatus.live,
         image: remoteImageUrl ?? _image!.path,
         isSynced: isSynced,
+        userId: appState.currentUserId ?? '',
       );
 
       await dataProvider.addProduct(newProduct);

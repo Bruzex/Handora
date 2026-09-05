@@ -66,14 +66,25 @@ class HandoraApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) {
+          final dp = DataProvider();
+          dp.init(); // seeds DB on first launch, loads data
+          return dp;
+        }),
+        ChangeNotifierProvider(create: (context) {
           final appState = AppState();
+          final dataProvider = context.read<DataProvider>();
+
           // Restore session: if Supabase has an active session, auto-login
           try {
             final session = Supabase.instance.client.auth.currentSession;
             if (session != null) {
               appState.loginFromSession();
+              final userId = Supabase.instance.client.auth.currentUser?.id;
+              if (userId != null) {
+                dataProvider.reloadForUser(userId);
+              }
             }
-            // Listen to auth state changes and sync AppState
+            // Listen to auth state changes and sync AppState + DataProvider
             Supabase.instance.client.auth.onAuthStateChange.listen((data) {
               final event = data.event;
               if (event == AuthChangeEvent.signedIn ||
@@ -81,21 +92,21 @@ class HandoraApp extends StatelessWidget {
                 if (!appState.isAuthenticated) {
                   appState.loginFromSession();
                 }
+                final userId = Supabase.instance.client.auth.currentUser?.id;
+                if (userId != null) {
+                  dataProvider.reloadForUser(userId);
+                }
               } else if (event == AuthChangeEvent.signedOut) {
                 if (appState.isAuthenticated) {
                   appState.logout();
                 }
+                dataProvider.clearProducts();
               }
             });
           } catch (_) {
             // Supabase may not be initialized if env keys were missing
           }
           return appState;
-        }),
-        ChangeNotifierProvider(create: (_) {
-          final dp = DataProvider();
-          dp.init(); // seeds DB on first launch, loads data
-          return dp;
         }),
       ],
       child: const _Root(),

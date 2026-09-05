@@ -1,4 +1,4 @@
-﻿enum ProductStatus { live, draft }
+enum ProductStatus { live, draft }
 
 class Product {
   final String id;
@@ -10,6 +10,7 @@ class Product {
   final ProductStatus status;
   final String image;
   final bool isSynced;
+  final String userId;
 
   const Product({
     required this.id,
@@ -21,6 +22,7 @@ class Product {
     required this.status,
     required this.image,
     this.isSynced = true,
+    this.userId = '',
   });
 
   Product copyWith({
@@ -33,6 +35,7 @@ class Product {
     ProductStatus? status,
     String? image,
     bool? isSynced,
+    String? userId,
   }) {
     return Product(
       id: id ?? this.id,
@@ -44,6 +47,7 @@ class Product {
       status: status ?? this.status,
       image: image ?? this.image,
       isSynced: isSynced ?? this.isSynced,
+      userId: userId ?? this.userId,
     );
   }
 
@@ -57,6 +61,7 @@ class Product {
     'status': status.name,
     'image': image,
     'isSynced': isSynced ? 1 : 0,
+    'userId': userId,
   };
 
   factory Product.fromMap(Map<String, dynamic> m) => Product(
@@ -69,6 +74,7 @@ class Product {
     status: ProductStatus.values.byName(m['status'] as String),
     image: m['image'] as String,
     isSynced: (m['isSynced'] as int? ?? 1) == 1,
+    userId: m['userId'] as String? ?? '',
   );
 
   /// Format price for display: 450 -> "₹450", 1250 -> "₹1,250"

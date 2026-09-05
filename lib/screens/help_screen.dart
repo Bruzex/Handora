@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
+import '../providers/data_provider.dart';
 import '../theme/palette.dart';
 import '../theme/shadows.dart';
 import '../widgets/help_card.dart';
@@ -91,6 +92,7 @@ class _HelpScreenState extends State<HelpScreen>
               Navigator.pop(ctx); // Close dialog
               await app.signOut();
               if (!mounted) return;
+              context.read<DataProvider>().clearProducts();
               Navigator.of(context).pushNamedAndRemoveUntil(
                 LoginScreen.routeName,
                 (route) => false,
