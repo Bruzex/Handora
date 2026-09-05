@@ -24,7 +24,18 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
   String? _errorMessage;
 
   @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_onEmailChanged);
+  }
+
+  void _onEmailChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    _emailController.removeListener(_onEmailChanged);
     _emailController.dispose();
     _passwordController.dispose();
     _emailFocusNode.dispose();
@@ -195,6 +206,21 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       onSubmitted: (_) => _passwordFocusNode.requestFocus(),
+                      suffixIcon: _emailController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                size: 20,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                              onPressed: () {
+                                _emailController.clear();
+                                setState(() {
+                                  _errorMessage = null;
+                                });
+                              },
+                            )
+                          : null,
                     ),
 
                     const SizedBox(height: 14),

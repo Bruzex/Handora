@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../l10n/strings.dart';
@@ -72,8 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final app = context.watch<AppState>();
-    final isHi = app.language == Language.hi;
+    final isHi = context.watch<AppState>().language == Language.hi;
 
     return Scaffold(
       backgroundColor: AppColors.surfaceIvory,
@@ -95,13 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Top Row: Language Toggle Pill (EN | हिं)
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: _buildLanguageToggle(app),
-                  ),
-
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 12),
 
                   // App Logo (Icon.png from Desktop)
                   Center(
@@ -212,72 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildLanguageToggle(AppState app) {
-    final isEn = app.language == Language.en;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.outlineVariant.withAlpha(150)),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadowColor,
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildLangOption(
-            label: 'EN',
-            isSelected: isEn,
-            onTap: () => app.setLanguage(Language.en),
-          ),
-          Container(
-            width: 1,
-            height: 14,
-            color: AppColors.outlineVariant,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-          ),
-          _buildLangOption(
-            label: 'हिं',
-            isSelected: !isEn,
-            onTap: () => app.setLanguage(Language.hi),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLangOption({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryFixed : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildPhoneInputField() {
     final hasText = _phoneController.text.isNotEmpty;

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -60,6 +60,7 @@ class VoiceAssistantService {
 
   Future<void> _initTts() async {
     try {
+      await _tts.setLanguage("hi-IN");
       await _tts.setVolume(1.0);
       await _tts.setPitch(1.0);
       await _tts.setSpeechRate(0.5);
@@ -206,24 +207,10 @@ class VoiceAssistantService {
 
     if (!_ttsReady) await _initTts();
 
-    var langCode =
-        language == Language.hi || RegExp(r'[\u0900-\u097F]').hasMatch(text)
-            ? 'hi-IN'
-            : 'en-IN';
-
-    // Check if the chosen language is available on this device
-    try {
-      final available = await _tts.isLanguageAvailable(langCode);
-      if (available != true) {
-        langCode = 'en-IN';
-        final enAvailable = await _tts.isLanguageAvailable('en-IN');
-        if (enAvailable != true) langCode = 'en-US';
-      }
-    } catch (_) {
-      langCode = 'en-IN';
-    }
-
-    await _tts.setLanguage(langCode);
+    // Force TTS engine language to Hindi ("hi-IN") before calling speak
+    // to correctly process and read mixed Hindi/Hinglish text containing Devanagari
+    // characters alongside English tech terms (like ONDC, WhatsApp, Business) without skipping them.
+    await _tts.setLanguage("hi-IN");
     await _tts.setVolume(1.0);
     await _tts.setPitch(1.0);
     await _tts.setSpeechRate(0.5);

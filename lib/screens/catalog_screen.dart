@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/strings.dart';
 import '../models/product.dart';
@@ -153,10 +153,8 @@ class CatalogScreen extends StatelessWidget {
                 children: [
                   const Icon(Icons.camera_alt_rounded, size: 24, color: Colors.white),
                   const SizedBox(width: 10),
-                  const Icon(Icons.mic_rounded, size: 24, color: Colors.white),
-                  const SizedBox(width: 10),
                   Text(
-                    '+ ${s.addNewProduct}',
+                    s.addNewProduct,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -211,15 +211,9 @@ class _EditVoiceInfoModalState extends State<EditVoiceInfoModal>
   Future<void> _speakConfirmation(String text, Language language) async {
     try {
       await _tts.stop();
-      var code = language == Language.hi || RegExp(r'[\u0900-\u097F]').hasMatch(text)
+      final code = (language == Language.hi || RegExp(r'[\u0900-\u097F]').hasMatch(text))
           ? 'hi-IN'
           : 'en-IN';
-      try {
-        final available = await _tts.isLanguageAvailable(code);
-        if (available != true) code = 'en-IN';
-      } catch (_) {
-        code = 'en-IN';
-      }
       await _tts.setLanguage(code);
       await _tts.speak(text);
     } catch (_) {}
