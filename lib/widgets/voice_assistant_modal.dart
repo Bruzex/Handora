@@ -29,6 +29,7 @@ class _VoiceAssistantModalState extends State<VoiceAssistantModal>
   _ViewState _state = _ViewState.recording;
   VoiceAssistantError _error = VoiceAssistantError.generic;
   String? _answer;
+  bool _hindiSnackbarShown = false;
 
   late final AnimationController _pulse = AnimationController(
     vsync: this,
@@ -99,10 +100,12 @@ class _VoiceAssistantModalState extends State<VoiceAssistantModal>
       setState(() {
         _answer = answer;
         _state = _ViewState.response;
+        _hindiSnackbarShown = false;
       });
       // Read the answer aloud right away — the button can replay or pause it.
       final app = context.read<AppState>();
       await _service.speak(answer, language: app.language);
+      _showHindiVoiceSnackbarIfNeeded();
     } on VoiceAssistantError catch (e) {
       if (!mounted) return;
       setState(() {
@@ -128,7 +131,34 @@ class _VoiceAssistantModalState extends State<VoiceAssistantModal>
       await _service.pauseSpeaking();
     } else {
       await _service.speak(_answer!, language: app.language);
+      _showHindiVoiceSnackbarIfNeeded();
     }
+  }
+
+  /// Shows a bilingual snackbar if Hindi voice was needed but unavailable.
+  void _showHindiVoiceSnackbarIfNeeded() {
+    if (!mounted) return;
+    if (!_service.hindiVoiceUnavailable) return;
+    if (_hindiSnackbarShown) return;
+    _hindiSnackbarShown = true;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Hindi voice not installed on this device. '
+          'Install Google Hindi TTS in system settings.\n'
+          'इस डिवाइस पर हिंदी आवाज़ उपलब्ध नहीं है। '
+          'सेटिंग्स में Google हिंदी TTS इंस्टॉल करें।',
+          style: TextStyle(fontSize: 13),
+        ),
+        backgroundColor: AppColors.amber600,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
   }
 
   String get _timerLabel {
