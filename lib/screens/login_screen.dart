@@ -421,9 +421,11 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CustomPaint(
-            size: const Size(20, 20),
-            painter: _GoogleLogoPainter(),
+          Image.asset(
+            'assets/images/google_logo.png',
+            width: 22,
+            height: 22,
+            fit: BoxFit.contain,
           ),
           const SizedBox(width: 12),
           const Text(
@@ -440,36 +442,3 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// Custom Painter for Google Multi-colored Logo
-class _GoogleLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double w = size.width;
-    final double h = size.height;
-    final center = Offset(w / 2, h / 2);
-    final radius = w / 2;
-
-    final paintBlue = Paint()..color = const Color(0xFF4285F4)..style = PaintingStyle.fill;
-    final paintRed = Paint()..color = const Color(0xFFEA4335)..style = PaintingStyle.fill;
-    final paintYellow = Paint()..color = const Color(0xFFFBBC05)..style = PaintingStyle.fill;
-    final paintGreen = Paint()..color = const Color(0xFF34A853)..style = PaintingStyle.fill;
-
-    // Outer segments
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -0.78, 1.57, true, paintBlue);
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), 0.79, 1.57, true, paintGreen);
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), 2.36, 1.57, true, paintYellow);
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), 3.93, 1.57, true, paintRed);
-
-    // Inner cutout
-    canvas.drawCircle(center, radius * 0.55, Paint()..color = AppColors.surfaceContainerLowest);
-
-    // Right horizontal bar for G
-    canvas.drawRect(
-      Rect.fromLTWH(center.dx - 1, center.dy - radius * 0.25, radius * 0.95, radius * 0.5),
-      paintBlue,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
