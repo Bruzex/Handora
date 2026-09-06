@@ -15,7 +15,8 @@ import '../theme/shadows.dart';
 import '../widgets/success_feedback_widgets.dart';
 
 class CaptureScreen extends StatefulWidget {
-  const CaptureScreen({super.key});
+  final Product? existingProduct;
+  const CaptureScreen({super.key, this.existingProduct});
 
   @override
   State<CaptureScreen> createState() => _CaptureScreenState();
@@ -29,6 +30,36 @@ class _CaptureScreenState extends State<CaptureScreen> {
   Product? _createdProduct;
 
   final _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingProduct != null) {
+      final path = widget.existingProduct!.image;
+      if (path.isNotEmpty) {
+        final file = File(path);
+        if (file.existsSync()) {
+          _image = file;
+        } else if (path.startsWith('http://') || path.startsWith('https://')) {
+          _downloadExistingImage(path);
+        }
+      }
+    }
+  }
+
+  Future<void> _downloadExistingImage(String url) async {
+    try {
+      final res = await http.get(Uri.parse(url));
+      if (res.statusCode == 200) {
+        final tempDir = Directory.systemTemp;
+        final tempFile = File('${tempDir.path}/draft_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        await tempFile.writeAsBytes(res.bodyBytes);
+        if (mounted) {
+          setState(() => _image = tempFile);
+        }
+      }
+    } catch (_) {}
+  }
 
   Future<void> _pick(ImageSource source) async {
     try {
@@ -81,7 +112,8 @@ class _CaptureScreenState extends State<CaptureScreen> {
       final description = ai['description'] as String? ?? '';
       final category = ai['category'] as String? ?? 'Other';
       final priceInRupees = (ai['estimated_price_inr'] as num?)?.toInt() ?? 500;
-      final productId = const Uuid().v4();
+      // Retain original product id if updating an existing draft
+      final productId = widget.existingProduct?.id ?? const Uuid().v4();
 
       // 2. Upload photo to Supabase Storage product-images bucket
       String? remoteImageUrl;
@@ -103,11 +135,13 @@ class _CaptureScreenState extends State<CaptureScreen> {
         }
         try {
           await SupabaseService.insertProduct(
+            id: productId,
             nameEn: nameEn,
             nameHi: nameHi,
             description: description,
             category: category,
             priceInRupees: priceInRupees,
+            status: 'live',
             imageUrl: remoteImageUrl,
           );
         } catch (dbErr) {
@@ -116,8 +150,8 @@ class _CaptureScreenState extends State<CaptureScreen> {
         }
       }
 
-      // 4. Save to local SQLite via DataProvider
-      final newProduct = Product(
+      // 4. Save to local SQLite via DataProvider (update existing draft or insert new)
+      final savedProduct = Product(
         id: productId,
         nameEn: nameEn,
         nameHi: nameHi,
@@ -130,7 +164,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
         userId: appState.currentUserId ?? '',
       );
 
-      await dataProvider.addProduct(newProduct);
+      if (widget.existingProduct != null) {
+        await dataProvider.updateProduct(savedProduct);
+      } else {
+        await dataProvider.addProduct(savedProduct);
+      }
       dataProvider.setProcessingAi(false);
 
       if (!mounted) return;
@@ -138,7 +176,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
       setState(() {
         _loading = false;
         _statusMessage = null;
-        _createdProduct = newProduct;
+        _createdProduct = savedProduct;
       });
     } on SocketException {
       // ── Offline: bypass AI, create draft product ──
@@ -170,22 +208,26 @@ class _CaptureScreenState extends State<CaptureScreen> {
     DataProvider dataProvider,
     AppState appState,
   ) async {
-    final productId = const Uuid().v4();
+    final productId = widget.existingProduct?.id ?? const Uuid().v4();
 
     final draftProduct = Product(
       id: productId,
-      nameEn: 'Draft Product (Offline)',
-      nameHi: 'ड्राफ्ट प्रोडक्ट',
-      description: 'Pending AI analysis',
-      category: 'Other',
-      priceInRupees: 0,
+      nameEn: widget.existingProduct?.nameEn ?? 'Draft Product (Offline)',
+      nameHi: widget.existingProduct?.nameHi ?? 'ड्राफ्ट प्रोडक्ट',
+      description: widget.existingProduct?.description ?? 'Pending AI analysis',
+      category: widget.existingProduct?.category ?? 'Other',
+      priceInRupees: widget.existingProduct?.priceInRupees ?? 0,
       status: ProductStatus.draft,
-      image: _image!.path,
+      image: _image?.path ?? widget.existingProduct?.image ?? '',
       isSynced: false,
       userId: appState.currentUserId ?? '',
     );
 
-    await dataProvider.addProduct(draftProduct);
+    if (widget.existingProduct != null) {
+      await dataProvider.updateProduct(draftProduct);
+    } else {
+      await dataProvider.addProduct(draftProduct);
+    }
     dataProvider.setProcessingAi(false);
 
     if (!mounted) return;
@@ -243,8 +285,12 @@ class _CaptureScreenState extends State<CaptureScreen> {
       appBar: AppBar(
         title: Text(
           _createdProduct != null
-              ? (isHi ? 'उत्पाद जोड़ा गया' : 'Product Added')
-              : (isHi ? 'फोटो खींचें और कैटलॉग बनाएं' : 'Snap & AI Catalog'),
+              ? (widget.existingProduct != null
+                  ? (isHi ? 'उत्पाद अपडेट हो गया' : 'Product Updated')
+                  : (isHi ? 'उत्पाद जोड़ा गया' : 'Product Added'))
+              : (widget.existingProduct != null
+                  ? (isHi ? 'लिस्टिंग पूरी करें' : 'Complete Listing')
+                  : (isHi ? 'फोटो खींचें और कैटलॉग बनाएं' : 'Snap & AI Catalog')),
           style: TextStyle(
             fontWeight: FontWeight.w800,
             color: dark ? Colors.white : AppColors.ink900,
@@ -440,7 +486,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
                         const Icon(Icons.auto_awesome_rounded, color: Colors.white),
                         const SizedBox(width: 8),
                         Text(
-                          isHi ? 'AI से जांचें और जोड़ें' : 'Analyze with AI & Save',
+                          widget.existingProduct != null
+                              ? (isHi ? 'AI से लिस्टिंग पूरी करें' : 'Complete Listing with AI')
+                              : (isHi ? 'AI से जांचें और जोड़ें' : 'Analyze with AI & Save'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -477,7 +525,13 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
           // Success heading
           Text(
-            isHi ? 'उत्पाद सफलतापूर्वक जोड़ा गया!' : 'Product Added Successfully!',
+            isHi
+                ? (widget.existingProduct != null
+                    ? 'लिस्टिंग सफलतापूर्वक पूरी हुई!'
+                    : 'उत्पाद सफलतापूर्वक जोड़ा गया!')
+                : (widget.existingProduct != null
+                    ? 'Listing Completed Successfully!'
+                    : 'Product Added Successfully!'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 22,

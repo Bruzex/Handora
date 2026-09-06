@@ -56,12 +56,15 @@ class SupabaseService {
 
   /// Insert product into Supabase database table with public HTTP image URL.
   /// Always writes the current authenticated user's id into 'user_id'.
+  /// Retains the provided [id] (if present) to prevent client/cloud id drift.
   static Future<void> insertProduct({
+    String? id,
     required String nameEn,
     required String nameHi,
     required String description,
     required String category,
     required int priceInRupees,
+    String status = 'live',
     required String imageUrl,
   }) async {
     final userId = currentUserId;
@@ -70,17 +73,19 @@ class SupabaseService {
       return;
     }
     try {
-      await _client.from('products').insert({
+      final payload = <String, dynamic>{
+        if (id != null && id.isNotEmpty) 'id': id,
         'name_en': nameEn,
         'name_hi': nameHi,
         'description': description,
         'category': category,
         'price_in_rupees': priceInRupees,
-        'status': 'live',
+        'status': status,
         'image_url': imageUrl,
         'user_id': userId,
-      });
-      debugPrint('✅ Inserted product into Supabase table for user $userId');
+      };
+      await _client.from('products').upsert(payload);
+      debugPrint('✅ Upserted product into Supabase table for user $userId (id: $id)');
     } catch (e) {
       debugPrint('❌ Supabase insert failed: $e');
       rethrow;
@@ -92,14 +97,18 @@ class SupabaseService {
     final userId = currentUserId;
     if (userId == null) return;
     try {
-      await _client.from('products').update({
+      final payload = <String, dynamic>{
         'name_en': product.nameEn,
         'name_hi': product.nameHi,
         'description': product.description,
         'category': product.category,
         'price_in_rupees': product.priceInRupees,
         'status': product.status.name,
-      }).eq('id', product.id).eq('user_id', userId);
+      };
+      if (product.image.startsWith('http://') || product.image.startsWith('https://')) {
+        payload['image_url'] = product.image;
+      }
+      await _client.from('products').update(payload).eq('id', product.id).eq('user_id', userId);
       debugPrint('✅ Updated product in Supabase table: ${product.id}');
     } catch (e) {
       debugPrint('⚠️ Supabase update failed: $e');
@@ -140,6 +149,7 @@ class SupabaseService {
         .order('created_at', ascending: false);
 
     return (data as List).map((row) {
+      final statusStr = (row['status'] as String? ?? 'live').toLowerCase();
       return Product(
         id: row['id']?.toString() ?? const Uuid().v4(),
         nameEn: row['name_en'] as String? ?? 'Handmade Product',
@@ -147,7 +157,7 @@ class SupabaseService {
         description: row['description'] as String? ?? '',
         category: row['category'] as String? ?? 'Other',
         priceInRupees: (row['price_in_rupees'] as num?)?.toInt() ?? 0,
-        status: ProductStatus.live,
+        status: statusStr == 'draft' ? ProductStatus.draft : ProductStatus.live,
         image: row['image_url'] as String? ?? '',
         isSynced: true,
         userId: userId,

@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/strings.dart';
@@ -6,6 +6,7 @@ import '../models/product.dart';
 import '../providers/data_provider.dart';
 import '../theme/palette.dart';
 import '../theme/shadows.dart';
+import '../screens/capture_screen.dart';
 import 'edit_voice_info_modal.dart';
 
 class ProductCard extends StatelessWidget {
@@ -77,6 +78,15 @@ class ProductCard extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => EditVoiceInfoModal(product: product),
+    );
+  }
+
+  void _openCompleteListing(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CaptureScreen(existingProduct: product),
+      ),
     );
   }
 
@@ -287,9 +297,9 @@ class ProductCard extends StatelessWidget {
                 ),
                 const Spacer(),
 
-                // Action button — opens Edit Voice Info modal
+                // Action button — opens Edit Voice Info modal (if live) or Complete Listing (if draft)
                 GestureDetector(
-                  onTap: () => _openVoiceEdit(context),
+                  onTap: () => live ? _openVoiceEdit(context) : _openCompleteListing(context),
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 12),

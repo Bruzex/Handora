@@ -91,8 +91,44 @@ class DataProvider extends ChangeNotifier {
   }
 
   /// Loads products scoped to the current user id from local SQLite.
+  /// Deduplicates any draft products that already exist as live products or
+  /// have duplicate draft entries with identical image paths.
   Future<void> loadProducts() async {
-    _products = await _db.queryProductsForUser(_currentUserId);
+    final loaded = await _db.queryProductsForUser(_currentUserId);
+
+    final liveProducts = loaded.where((p) => p.status == ProductStatus.live).toList();
+    final seenDraftKeys = <String>{};
+    final cleaned = <Product>[];
+
+    for (var p in loaded) {
+      // If product has offline draft placeholder values but was marked live, treat as draft
+      if (p.nameEn == 'Draft Product (Offline)' && p.priceInRupees == 0 && p.status == ProductStatus.live) {
+        p = p.copyWith(status: ProductStatus.draft);
+      }
+
+      if (p.status == ProductStatus.draft) {
+        final imageName = p.image.split('/').last.split('\\').last;
+        final hasLiveCopy = liveProducts.any((lp) =>
+            lp.id != p.id &&
+            lp.nameEn != 'Draft Product (Offline)' &&
+            (lp.image == p.image ||
+             (imageName.isNotEmpty && lp.image.endsWith(imageName))));
+
+        final isDuplicateDraft = imageName.isNotEmpty && seenDraftKeys.contains(imageName);
+
+        if (hasLiveCopy || isDuplicateDraft) {
+          await _db.deleteProduct(p.id);
+          continue;
+        }
+
+        if (imageName.isNotEmpty) {
+          seenDraftKeys.add(imageName);
+        }
+      }
+      cleaned.add(p);
+    }
+
+    _products = cleaned;
     notifyListeners();
   }
 
@@ -146,28 +182,22 @@ class DataProvider extends ChangeNotifier {
             }
           }
 
-          // Insert into Supabase table
+          // Insert/upsert into Supabase table retaining original product ID and status
           await SupabaseService.insertProduct(
-            nameEn: p.nameEn,
-            nameHi: p.nameHi,
-            description: p.description,
-            category: p.category,
-            priceInRupees: p.priceInRupees,
-            imageUrl: publicUrl,
-          );
-
-          // Update local SQLite record with isSynced = true and remote public URL
-          final updated = Product(
             id: p.id,
             nameEn: p.nameEn,
             nameHi: p.nameHi,
             description: p.description,
             category: p.category,
             priceInRupees: p.priceInRupees,
-            status: p.status,
+            status: p.status.name,
+            imageUrl: publicUrl,
+          );
+
+          // Update local SQLite record with isSynced = true and remote public URL
+          final updated = p.copyWith(
             image: publicUrl,
             isSynced: true,
-            userId: p.userId,
           );
           await _db.updateProduct(updated);
           debugPrint('✅ Synced offline product ${p.id} to Supabase');
@@ -221,7 +251,23 @@ class DataProvider extends ChangeNotifier {
       try {
         final remoteProducts = await SupabaseService.fetchProducts();
         for (final p in remoteProducts) {
-          await _db.insertProduct(p);
+          // Check if local SQLite already has this product by id -> update instead of duplicate
+          final existing = _products.where((lp) => lp.id == p.id).firstOrNull;
+          if (existing != null) {
+            await _db.updateProduct(p);
+          } else {
+            // Also deduplicate any local draft whose image was uploaded to this remote product
+            final imageName = p.image.split('/').last.split('\\').last;
+            final draftMatch = _products.where((lp) =>
+                lp.status == ProductStatus.draft &&
+                (lp.image == p.image ||
+                 (imageName.isNotEmpty &&
+                  (lp.image.endsWith(imageName) || lp.image.contains(imageName))))).firstOrNull;
+            if (draftMatch != null) {
+              await _db.deleteProduct(draftMatch.id);
+            }
+            await _db.insertProduct(p);
+          }
         }
         if (remoteProducts.isNotEmpty) {
           await loadProducts();

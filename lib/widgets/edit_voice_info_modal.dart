@@ -184,6 +184,7 @@ class _EditVoiceInfoModalState extends State<EditVoiceInfoModal>
         priceInRupees: newPrice,
         description: newDesc,
         category: newCategory,
+        status: ProductStatus.live,
       );
 
       // Save to SQLite & Supabase
