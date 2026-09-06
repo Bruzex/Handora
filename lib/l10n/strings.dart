@@ -32,7 +32,7 @@ class DashboardStrings {
   final String voiceHelpTitle, voiceHelpSubtitle;
   final String listeningStatus, processingStatus, voiceStopSubmit;
   final String voiceAnswerTitle, voicePlay, voicePause, voiceTryAgain;
-  final String voiceErrorMic, voiceErrorNetwork, voiceErrorGeneric;
+  final String voiceErrorMic, voiceErrorNetwork, voiceErrorGeneric, voiceErrorEmpty;
   final String whatsappHelpTitle, whatsappHelpText;
   final String tutorialTitle, tutorialText, playLabel;
   final String callTitle, callNumber;
@@ -64,6 +64,7 @@ class DashboardStrings {
     required this.voiceAnswerTitle, required this.voicePlay, required this.voicePause,
     required this.voiceTryAgain, required this.voiceErrorMic,
     required this.voiceErrorNetwork, required this.voiceErrorGeneric,
+    required this.voiceErrorEmpty,
     required this.whatsappHelpTitle, required this.whatsappHelpText,
     required this.tutorialTitle, required this.tutorialText, required this.playLabel,
     required this.callTitle, required this.callNumber,
@@ -114,6 +115,7 @@ const kStrings = <Language, DashboardStrings>{
     voiceErrorMic: "We couldn't access your microphone. Please allow mic access and try again.",
     voiceErrorNetwork: "We couldn't reach the AI assistant. Please check your internet and try again.",
     voiceErrorGeneric: 'Something went wrong. Please try again.',
+    voiceErrorEmpty: "We couldn't hear any audio. Please try speaking again.",
     whatsappHelpTitle: 'Chat on WhatsApp Support',
     whatsappHelpText: 'Get 24/7 instant help on WhatsApp',
     tutorialTitle: 'Audio Tutorial: How to sell on ONDC',
@@ -171,6 +173,7 @@ const kStrings = <Language, DashboardStrings>{
     voiceErrorMic: 'माइक्रोफ़ोन नहीं खुल पाया। कृपया माइक की अनुमति दें और दोबारा कोशिश करें।',
     voiceErrorNetwork: 'AI असिस्टेंट से संपर्क नहीं हो पाया। कृपया इंटरनेट जाँचें और दोबारा कोशिश करें।',
     voiceErrorGeneric: 'कुछ गड़बड़ हो गई। कृपया दोबारा कोशिश करें।',
+    voiceErrorEmpty: 'कुछ सुनाई नहीं दिया। कृपया दोबारा बोलकर कोशिश करें।',
     whatsappHelpTitle: 'WhatsApp पर बात करें',
     whatsappHelpText: '24/7 तुरंत मदद पाएँ',
     tutorialTitle: 'ऑडियो गाइड: ONDC पर कैसे बेचें',

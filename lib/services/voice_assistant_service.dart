@@ -167,18 +167,41 @@ class VoiceAssistantService {
     }
   }
 
+  static const _model = 'gemini-3.6-flash';
+
   Future<String> stopRecordingAndAsk() async {
     final path = await _recorder.stop();
     _recordingPath = null;
-    if (path == null) throw VoiceAssistantError.emptyRecording;
+    if (path == null || path.isEmpty) {
+      debugPrint('Voice Assistant: Recording path is null or empty');
+      throw VoiceAssistantError.emptyRecording;
+    }
 
     final file = File(path);
+    if (!await file.exists()) {
+      debugPrint('Voice Assistant: Recording file does not exist at $path');
+      throw VoiceAssistantError.emptyRecording;
+    }
+
+    final fileSize = await file.length();
+    debugPrint('🎙️ Voice Assistant: Recorded audio size = $fileSize bytes');
+    if (fileSize == 0) {
+      debugPrint('Voice Assistant: Recording file is empty (0 bytes)');
+      try { await file.delete(); } catch (_) {}
+      throw VoiceAssistantError.emptyRecording;
+    }
+
     try {
       final bytes = await file.readAsBytes();
-      if (bytes.isEmpty) throw VoiceAssistantError.emptyRecording;
+      if (bytes.isEmpty) {
+        debugPrint('Voice Assistant: Audio bytes are empty');
+        try { await file.delete(); } catch (_) {}
+        throw VoiceAssistantError.emptyRecording;
+      }
       try { await file.delete(); } catch (_) {}
       return await _askGemini(bytes);
-    } on FileSystemException {
+    } on FileSystemException catch (e) {
+      debugPrint('Voice Assistant FileSystemException: $e');
       throw VoiceAssistantError.emptyRecording;
     }
   }
@@ -192,41 +215,36 @@ class VoiceAssistantService {
   }
 
   Future<String> _askGemini(List<int> audioBytes) async {
+    if (audioBytes.isEmpty) {
+      debugPrint('Voice Assistant: audioBytes is empty in _askGemini');
+      throw VoiceAssistantError.emptyRecording;
+    }
+
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
-    if (apiKey.isEmpty) throw VoiceAssistantError.generic;
+    if (apiKey.isEmpty) {
+      debugPrint('Voice Assistant Error: GEMINI_API_KEY is not configured in .env');
+      throw VoiceAssistantError.generic;
+    }
 
     try {
       final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=$apiKey',
+        'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=$apiKey',
       );
 
       final body = {
-        "system_instruction": {
-          "parts": [{"text": _systemPrompt}]
-        },
         "contents": [
           {
             "parts": [
+              {"text": _systemPrompt},
               {
-                "text": "Listen carefully to the user's spoken voice query in this "
-                    "audio clip. Understand what they are asking — it could be in "
-                    "Hindi, English, or Hinglish. Provide a direct, helpful answer "
-                    "to their specific question. Do NOT introduce yourself or give "
-                    "a generic greeting."
-              },
-              {
-                "inline_data": {
-                  "mime_type": "audio/aac",
+                "inlineData": {
+                  "mimeType": "audio/mp4",
                   "data": base64Encode(audioBytes),
                 }
               }
             ]
           }
-        ],
-        "generationConfig": {
-          "temperature": 0.4,
-          "thinkingConfig": {"thinkingBudget": 0},
-        },
+        ]
       };
 
       final response = await http.post(
@@ -256,13 +274,17 @@ class VoiceAssistantService {
       return text;
     } on VoiceAssistantError {
       rethrow;
-    } on TimeoutException {
+    } on TimeoutException catch (e) {
+      debugPrint('Voice Assistant Timeout: $e');
       throw VoiceAssistantError.network;
-    } on SocketException {
+    } on SocketException catch (e) {
+      debugPrint('Voice Assistant SocketException: $e');
       throw VoiceAssistantError.network;
-    } on http.ClientException {
+    } on http.ClientException catch (e) {
+      debugPrint('Voice Assistant ClientException: $e');
       throw VoiceAssistantError.network;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Voice Assistant Unexpected Error: $e');
       throw VoiceAssistantError.generic;
     }
   }

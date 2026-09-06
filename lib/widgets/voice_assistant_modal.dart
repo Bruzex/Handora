@@ -68,9 +68,18 @@ class _VoiceAssistantModalState extends State<VoiceAssistantModal>
     try {
       await _service.startRecording();
     } on VoiceAssistantError catch (e) {
+      debugPrint('Voice Assistant Error: $e');
       if (!mounted) return;
       setState(() {
         _error = e;
+        _state = _ViewState.error;
+      });
+      return;
+    } catch (e) {
+      debugPrint('Voice Assistant Error: $e');
+      if (!mounted) return;
+      setState(() {
+        _error = VoiceAssistantError.generic;
         _state = _ViewState.error;
       });
       return;
@@ -107,9 +116,17 @@ class _VoiceAssistantModalState extends State<VoiceAssistantModal>
       await _service.speak(answer, language: app.language);
       _showHindiVoiceSnackbarIfNeeded();
     } on VoiceAssistantError catch (e) {
+      debugPrint('Voice Assistant Error: $e');
       if (!mounted) return;
       setState(() {
         _error = e;
+        _state = _ViewState.error;
+      });
+    } catch (e) {
+      debugPrint('Voice Assistant Error: $e');
+      if (!mounted) return;
+      setState(() {
+        _error = VoiceAssistantError.generic;
         _state = _ViewState.error;
       });
     }
@@ -127,11 +144,15 @@ class _VoiceAssistantModalState extends State<VoiceAssistantModal>
 
   Future<void> _toggleTts() async {
     final app = context.read<AppState>();
-    if (_service.isSpeaking.value) {
-      await _service.pauseSpeaking();
-    } else {
-      await _service.speak(_answer!, language: app.language);
-      _showHindiVoiceSnackbarIfNeeded();
+    try {
+      if (_service.isSpeaking.value) {
+        await _service.pauseSpeaking();
+      } else {
+        await _service.speak(_answer!, language: app.language);
+        _showHindiVoiceSnackbarIfNeeded();
+      }
+    } catch (e) {
+      debugPrint('Voice Assistant Error: $e');
     }
   }
 
@@ -171,6 +192,7 @@ class _VoiceAssistantModalState extends State<VoiceAssistantModal>
     return switch (_error) {
       VoiceAssistantError.micPermission => s.voiceErrorMic,
       VoiceAssistantError.network => s.voiceErrorNetwork,
+      VoiceAssistantError.emptyRecording => s.voiceErrorEmpty,
       _ => s.voiceErrorGeneric,
     };
   }
