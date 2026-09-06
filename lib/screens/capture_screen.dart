@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -53,21 +54,26 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
     final dataProvider = context.read<DataProvider>();
     final appState = context.read<AppState>();
+    final isHi = appState.language == Language.hi;
     dataProvider.setProcessingAi(true);
 
     setState(() {
       _loading = true;
-      _statusMessage = 'Analyzing with Gemini AI...';
+      _statusMessage = isHi
+          ? 'Gemini AI से जांच हो रही है...'
+          : 'Analyzing with Gemini AI...';
       _error = null;
       _createdProduct = null;
     });
 
     try {
-      // 1. Gemini AI analysis
+      // 1. Gemini AI analysis — may throw SocketException when offline
       final ai = await GeminiService.analyzeProductImage(_image!);
 
       if (mounted) {
-        setState(() => _statusMessage = 'Uploading image to Supabase Storage...');
+        setState(() => _statusMessage = isHi
+            ? 'Supabase Storage पर अपलोड हो रहा है...'
+            : 'Uploading image to Supabase Storage...');
       }
 
       final nameEn = ai['title_en'] as String? ?? 'Handmade Product';
@@ -91,7 +97,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
       // 3. If uploaded to Supabase Storage, insert record into Supabase products table with public URL
       if (isSynced && remoteImageUrl != null && remoteImageUrl.isNotEmpty) {
         if (mounted) {
-          setState(() => _statusMessage = 'Saving to Supabase & ONDC...');
+          setState(() => _statusMessage = isHi
+              ? 'Supabase और ONDC पर सेव हो रहा है...'
+              : 'Saving to Supabase & ONDC...');
         }
         try {
           await SupabaseService.insertProduct(
@@ -132,16 +140,82 @@ class _CaptureScreenState extends State<CaptureScreen> {
         _statusMessage = null;
         _createdProduct = newProduct;
       });
+    } on SocketException {
+      // ── Offline: bypass AI, create draft product ──
+      debugPrint('📴 Offline detected (SocketException) — saving draft product');
+      await _saveOfflineDraft(dataProvider, appState);
+    } on http.ClientException {
+      // ── Network error: also treat as offline ──
+      debugPrint('📴 Network error (ClientException) — saving draft product');
+      await _saveOfflineDraft(dataProvider, appState);
     } catch (e) {
+      // ── Other unexpected errors (API key missing, JSON parse, etc.) ──
       dataProvider.setProcessingAi(false);
+      debugPrint('❌ Capture error: $e');
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = 'Error: $e';
+          _error = isHi
+              ? 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।'
+              : 'Something went wrong. Please try again.';
         });
       }
-      debugPrint('Full error: $e');
     }
+  }
+
+  /// Creates a draft product from the captured image and saves it locally
+  /// when the device is offline. Shows a bilingual SnackBar and navigates
+  /// back to the catalog.
+  Future<void> _saveOfflineDraft(
+    DataProvider dataProvider,
+    AppState appState,
+  ) async {
+    final productId = const Uuid().v4();
+
+    final draftProduct = Product(
+      id: productId,
+      nameEn: 'Draft Product (Offline)',
+      nameHi: 'ड्राफ्ट प्रोडक्ट',
+      description: 'Pending AI analysis',
+      category: 'Other',
+      priceInRupees: 0,
+      status: ProductStatus.draft,
+      image: _image!.path,
+      isSynced: false,
+      userId: appState.currentUserId ?? '',
+    );
+
+    await dataProvider.addProduct(draftProduct);
+    dataProvider.setProcessingAi(false);
+
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+      _statusMessage = null;
+      _error = null;
+    });
+
+    // Show bilingual offline-save SnackBar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          'No internet connection. Photo saved offline. '
+          'You can edit details manually later.\n'
+          'इंटरनेट नहीं है। फोटो सेव हो गई है।',
+          style: TextStyle(fontSize: 13),
+        ),
+        backgroundColor: AppColors.amber600,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+
+    // Navigate back to catalog
+    _goToCatalog();
   }
 
   void _goToCatalog() {
