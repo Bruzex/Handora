@@ -142,8 +142,8 @@ Output STRICTLY valid JSON with no markdown code blocks, matching this schema:
           "parts": [
             {"text": promptText},
             {
-              "inline_data": {
-                "mime_type": "audio/aac",
+              "inlineData": {
+                "mimeType": "audio/mp4",
                 "data": base64Audio,
               }
             }

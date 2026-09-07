@@ -119,9 +119,10 @@ class _EditVoiceInfoModalState extends State<EditVoiceInfoModal>
         } catch (_) {}
       });
     } catch (e) {
+      debugPrint('Could not start recording: $e');
       setState(() {
         _state = _EditState.error;
-        _errorMessage = 'Could not start recording: $e';
+        _errorMessage = 'Something went wrong. / कुछ गलत हो गया।';
       });
     }
   }
@@ -201,10 +202,22 @@ class _EditVoiceInfoModalState extends State<EditVoiceInfoModal>
       // Announce confirmation aloud via TTS
       _speakConfirmation(spokenText, appLang);
     } catch (e) {
+      debugPrint('Edit voice info error: $e');
       if (!mounted) return;
+      final errStr = e.toString();
+      final String message;
+      if (errStr.contains('429') ||
+          errStr.toLowerCase().contains('quota exceeded') ||
+          errStr.contains('RESOURCE_EXHAUSTED')) {
+        message =
+            'Server is currently busy. Please wait a minute and try again. / सर्वर अभी व्यस्त है। कृपया 1 मिनट बाद पुनः प्रयास करें।';
+      } else {
+        message = 'Something went wrong. / कुछ गलत हो गया।';
+      }
+
       setState(() {
         _state = _EditState.error;
-        _errorMessage = 'Error processing voice edit: $e';
+        _errorMessage = message;
       });
     }
   }
@@ -763,13 +776,28 @@ class _EditVoiceInfoModalState extends State<EditVoiceInfoModal>
   Widget _buildErrorView(bool isHi, Color textColor) {
     return Column(
       key: const ValueKey('error_view'),
+      mainAxisSize: MainAxisSize.min,
       children: [
         const Icon(Icons.error_outline_rounded, color: AppColors.red600, size: 40),
         const SizedBox(height: 10),
-        Text(
-          _errorMessage ?? (isHi ? 'त्रुटि हुई' : 'An error occurred'),
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 14, color: AppColors.red600, fontWeight: FontWeight.w600),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 120),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Text(
+              _errorMessage ??
+                  (isHi
+                      ? 'कुछ गलत हो गया।'
+                      : 'Something went wrong.'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.red600,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         SizedBox(
