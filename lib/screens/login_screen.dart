@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../l10n/strings.dart';
 import '../providers/app_state.dart';
 import '../theme/palette.dart';
@@ -20,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final FocusNode _phoneFocusNode = FocusNode();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _errorMessage;
 
   @override
@@ -398,16 +401,92 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  /// Handles the real Google Sign-In → Supabase signInWithIdToken flow.
+  Future<void> _handleGoogleSignIn() async {
+    if (_isGoogleLoading) return;
+
+    final app = context.read<AppState>();
+    final isHi = app.language == Language.hi;
+
+    setState(() => _isGoogleLoading = true);
+
+    try {
+      // ── 1. Trigger native Google Sign-In ──
+      // TODO: Replace the serverClientId below with your Google Cloud
+      //       OAuth 2.0 **Web** Client ID (the one registered in Supabase
+      //       Dashboard → Authentication → Providers → Google).
+      const webClientId =
+          'YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com';
+
+      final googleSignIn = GoogleSignIn(
+        serverClientId: webClientId,
+        scopes: ['email', 'profile'],
+      );
+
+      final googleUser = await googleSignIn.signIn();
+
+      // User cancelled the Google picker dialog
+      if (googleUser == null) {
+        if (mounted) setState(() => _isGoogleLoading = false);
+        return;
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
+
+      if (idToken == null) {
+        throw Exception('Google Sign-In did not return an ID token.');
+      }
+
+      // ── 2. Authenticate with Supabase using the Google token ──
+      await Supabase.instance.client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+
+      if (!mounted) return;
+
+      // ── 3. Update AppState and navigate to dashboard ──
+      context.read<AppState>().loginFromSession();
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+    } on AuthException catch (e) {
+      debugPrint('Google Sign-In AuthException: ${e.message}');
+      if (!mounted) return;
+      setState(() => _isGoogleLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isHi
+                ? 'Google साइन-इन विफल। कृपया पुनः प्रयास करें।\n${e.message}'
+                : 'Google Sign-In failed. Please try again.\n${e.message}',
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFFBA1A1A),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Google Sign-In error: $e');
+      if (!mounted) return;
+      setState(() => _isGoogleLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isHi
+                ? 'Google साइन-इन में त्रुटि हुई। कृपया पुनः प्रयास करें।'
+                : 'Something went wrong with Google Sign-In. Please try again.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFFBA1A1A),
+        ),
+      );
+    }
+  }
+
   Widget _buildGoogleSignInButton() {
     return OutlinedButton(
-      onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Google Sign-In initiated'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      },
+      onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
       style: OutlinedButton.styleFrom(
         backgroundColor: AppColors.surfaceContainerLowest,
         foregroundColor: AppColors.primary,
@@ -418,26 +497,35 @@ class _LoginScreenState extends State<LoginScreen> {
           borderRadius: BorderRadius.circular(14),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset(
-            'assets/images/google_logo.png',
-            width: 22,
-            height: 22,
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'Continue with Google',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
+      child: _isGoogleLoading
+          ? const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              ),
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'assets/images/google_logo.png',
+                  width: 22,
+                  height: 22,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Continue with Google',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }
