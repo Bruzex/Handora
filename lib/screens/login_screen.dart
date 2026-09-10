@@ -416,7 +416,7 @@ class _LoginScreenState extends State<LoginScreen> {
       //       OAuth 2.0 **Web** Client ID (the one registered in Supabase
       //       Dashboard → Authentication → Providers → Google).
       const webClientId =
-          'YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com';
+          '122129827888-cgmtmmuubrdqjabq4nl9s8ij1k926g7q.apps.googleusercontent.com';
 
       final googleSignIn = GoogleSignIn(
         serverClientId: webClientId,
