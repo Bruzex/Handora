@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../l10n/strings.dart';
 import '../models/order.dart';
@@ -35,14 +36,18 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
   }
 
   Future<void> _updateStatus(String newStatus) async {
-    if (_currentStatus == newStatus || widget.order.dbId == null) return;
+    if (_currentStatus == newStatus && widget.order.status == newStatus) return;
     setState(() {
       _currentStatus = newStatus;
       _isUpdating = true;
     });
 
     final dataProvider = context.read<DataProvider>();
-    await dataProvider.updateOrderStatus(widget.order.dbId!, newStatus);
+    await dataProvider.updateOrderStatus(
+      widget.order.dbId,
+      newStatus,
+      orderId: widget.order.id,
+    );
 
     if (!mounted) return;
     setState(() => _isUpdating = false);
@@ -62,10 +67,18 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
   }
 
   Future<void> _launchWhatsApp() async {
-    final updatedOrder = widget.order.copyWith(status: _currentStatus);
     final app = context.read<AppState>();
+    final isHi = app.language == Language.hi;
 
-    final success = await WhatsAppService.sendWhatsAppOrderUpdate(
+    // If status was changed, ensure database update is persisted
+    if (_currentStatus != widget.order.status) {
+      await _updateStatus(_currentStatus);
+      if (!mounted) return;
+    }
+
+    final updatedOrder = widget.order.copyWith(status: _currentStatus);
+
+    final result = await WhatsAppService.sendWhatsAppOrderUpdate(
       order: updatedOrder,
       customNote: _noteController.text,
       language: app.language,
@@ -73,19 +86,70 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
 
     if (!mounted) return;
 
-    if (!success) {
-      final isHi = app.language == Language.hi;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isHi
-                ? 'WhatsApp नहीं खोला जा सका। कृपया जांचें कि WhatsApp इंस्टॉल है।'
-                : 'Could not launch WhatsApp. Please check if WhatsApp is installed.',
+    final message = WhatsAppService.buildOrderMessage(
+      order: updatedOrder,
+      customNote: _noteController.text,
+      language: app.language,
+    );
+
+    switch (result) {
+      case WhatsAppResult.success:
+        break;
+
+      case WhatsAppResult.invalidPhone:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isHi
+                  ? 'खरीदार का फ़ोन नंबर अमान्य या अनुपलब्ध है।'
+                  : 'Buyer phone number is missing or invalid.',
+            ),
+            backgroundColor: AppColors.amber600,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: isHi ? 'संदेश कॉपी करें' : 'Copy Message',
+              textColor: Colors.white,
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: message));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isHi
+                          ? 'संदेश क्लिपबोर्ड पर कॉपी हो गया!'
+                          : 'Message copied to clipboard!',
+                    ),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
           ),
-          backgroundColor: AppColors.red600,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        );
+        break;
+
+      case WhatsAppResult.launchFailed:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isHi
+                  ? 'WhatsApp नहीं खोला जा सका। कृपया जांचें कि WhatsApp इंस्टॉल है।'
+                  : 'Could not launch WhatsApp. Please check if WhatsApp is installed.',
+            ),
+            backgroundColor: AppColors.red600,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: isHi ? 'कॉपी करें' : 'Copy',
+              textColor: Colors.white,
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: message));
+              },
+            ),
+          ),
+        );
+        break;
     }
   }
 

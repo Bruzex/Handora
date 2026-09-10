@@ -13,6 +13,7 @@ import 'widgets/order_shipped_modal.dart';
 import 'screens/login_screen.dart';
 import 'screens/email_login_screen.dart';
 import 'screens/signup_screen.dart';
+import 'screens/phone_login_screen.dart';
 import 'screens/otp_verification_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/catalog_screen.dart';
@@ -131,6 +132,16 @@ class _Root extends StatelessWidget {
       routes: {
         '/': (context) => const _Shell(),
         LoginScreen.routeName: (context) => const LoginScreen(),
+        PhoneLoginScreen.routeName: (context) {
+          final args =
+              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          final phoneNumber = args?['phoneNumber'] as String?;
+          final startAtOtp = args?['startAtOtp'] as bool? ?? false;
+          return PhoneLoginScreen(
+            initialPhoneNumber: phoneNumber,
+            startAtOtp: startAtOtp,
+          );
+        },
         EmailLoginScreen.routeName: (context) => const EmailLoginScreen(),
         SignUpScreen.routeName: (context) => const SignUpScreen(),
         OtpVerificationScreen.routeName: (context) {
@@ -138,7 +149,10 @@ class _Root extends StatelessWidget {
               ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
           final phoneNumber =
               args?['phoneNumber'] as String? ?? '+91 98765 43210';
-          return OtpVerificationScreen(phoneNumber: phoneNumber);
+          return PhoneLoginScreen(
+            initialPhoneNumber: phoneNumber,
+            startAtOtp: true,
+          );
         },
       },
     );

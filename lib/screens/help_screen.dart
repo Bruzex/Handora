@@ -332,6 +332,20 @@ class _HelpScreenState extends State<HelpScreen>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                ] else if (app.userPhone != null &&
+                    app.userPhone != app.userDisplayName) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    app.userPhone!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: dark ? AppColors.ink500 : AppColors.onSurfaceVariant,
+                      fontFamily: 'Inter',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ],
             ),
@@ -429,6 +443,9 @@ class _HelpScreenState extends State<HelpScreen>
 
   String _getInitials(String name) {
     if (name.isEmpty) return '?';
+    if (name.startsWith('+') || RegExp(r'^[0-9+]+$').hasMatch(name.trim())) {
+      return 'H';
+    }
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();

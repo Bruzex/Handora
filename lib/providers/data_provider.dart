@@ -282,8 +282,8 @@ class DataProvider extends ChangeNotifier {
   }
 
   /// Updates an order status in local SQLite and refreshes orders.
-  Future<void> updateOrderStatus(int dbId, String status) async {
-    await _db.updateOrderStatus(dbId, status);
+  Future<void> updateOrderStatus(int? dbId, String status, {String? orderId}) async {
+    await _db.updateOrderStatus(dbId, status, orderId: orderId);
     await loadOrders();
   }
 

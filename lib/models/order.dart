@@ -1,4 +1,4 @@
-﻿class Order {
+class Order {
   final int? dbId; // auto-increment PK from SQLite
   final String id;
   final int quantity;
@@ -99,11 +99,17 @@
 
   /// Clean buyer phone formatted for display (e.g. +91 98765 43210)
   String get formattedPhone {
-    if (buyerPhone.startsWith('91') && buyerPhone.length == 12) {
-      final p = buyerPhone.substring(2);
-      return '+91 ${p.substring(0, 5)} ${p.substring(5)}';
+    final clean = buyerPhone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (clean.isEmpty) {
+      return 'No phone provided';
     }
-    return '+$buyerPhone';
+    if (clean.startsWith('91') && clean.length == 12) {
+      final p = clean.substring(2);
+      return '+91 ${p.substring(0, 5)} ${p.substring(5)}';
+    } else if (clean.length == 10) {
+      return '+91 ${clean.substring(0, 5)} ${clean.substring(5)}';
+    }
+    return '+$clean';
   }
 }
 

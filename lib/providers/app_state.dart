@@ -16,10 +16,12 @@ class AppState extends ChangeNotifier {
   // User profile (populated from Supabase session)
   String? _userDisplayName;
   String? _userEmail;
+  String? _userPhone;
 
   bool get isAuthenticated => _isAuthenticated;
   String? get userDisplayName => _userDisplayName;
   String? get userEmail => _userEmail;
+  String? get userPhone => _userPhone;
 
   /// Current Supabase auth user id (null for mock-OTP or unauthenticated).
   String? get currentUserId {
@@ -38,16 +40,19 @@ class AppState extends ChangeNotifier {
   DashboardStrings get strings => kStrings[_language]!;
 
   /// Call after Supabase auth succeeds or on session restore.
-  /// Reads display name and email from the current Supabase user.
+  /// Reads display name, email, and phone from the current Supabase user.
   void loginFromSession() {
     _isAuthenticated = true;
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
         _userEmail = user.email;
+        _userPhone = user.phone;
         final meta = user.userMetadata;
         final name = meta?['full_name'] as String?;
-        _userDisplayName = (name != null && name.isNotEmpty) ? name : _userEmail;
+        _userDisplayName = (name != null && name.isNotEmpty)
+            ? name
+            : (_userEmail ?? user.phone);
       }
     } catch (_) {
       // Supabase may not be initialized
@@ -69,6 +74,7 @@ class AppState extends ChangeNotifier {
     _isAuthenticated = false;
     _userDisplayName = null;
     _userEmail = null;
+    _userPhone = null;
     _tab = NavTab.home;
     notifyListeners();
   }
@@ -77,6 +83,7 @@ class AppState extends ChangeNotifier {
     _isAuthenticated = false;
     _userDisplayName = null;
     _userEmail = null;
+    _userPhone = null;
     notifyListeners();
   }
 

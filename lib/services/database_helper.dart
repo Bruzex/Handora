@@ -147,10 +147,16 @@ class DatabaseHelper {
     return rows.map(Order.fromMap).toList();
   }
 
-  Future<int> updateOrderStatus(int dbId, String status) async {
+  Future<int> updateOrderStatus(int? dbId, String status, {String? orderId}) async {
     final db = await database;
-    return db.update('orders', {'status': status},
-        where: 'dbId = ?', whereArgs: [dbId]);
+    if (dbId != null && dbId > 0) {
+      return db.update('orders', {'status': status},
+          where: 'dbId = ?', whereArgs: [dbId]);
+    } else if (orderId != null && orderId.isNotEmpty) {
+      return db.update('orders', {'status': status},
+          where: 'id = ?', whereArgs: [orderId]);
+    }
+    return 0;
   }
 
   Future<int> updateOrder(Order order) async {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,7 +6,7 @@ import '../l10n/strings.dart';
 import '../providers/app_state.dart';
 import '../theme/palette.dart';
 import 'email_login_screen.dart';
-import 'otp_verification_screen.dart';
+import 'phone_login_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   static const String routeName = '/login';
@@ -19,59 +18,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _phoneController = TextEditingController();
-  final FocusNode _phoneFocusNode = FocusNode();
-  bool _isLoading = false;
   bool _isGoogleLoading = false;
-  String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _phoneController.addListener(() {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    _phoneFocusNode.dispose();
-    super.dispose();
-  }
-
-  void _handleSendOtp() {
-    final rawNumber = _phoneController.text.trim();
-    final app = context.read<AppState>();
-    final isHi = app.language == Language.hi;
-
-    if (rawNumber.length != 10) {
-      setState(() {
-        _errorMessage = isHi
-            ? 'कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें'
-            : 'Please enter a valid 10-digit mobile number';
-      });
-      return;
-    }
-
-    setState(() {
-      _errorMessage = null;
-      _isLoading = true;
-    });
-
-    // Simulate fast OTP network dispatch
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-
-      final formattedPhone = '+91 $rawNumber';
-      Navigator.pushNamed(
-        context,
-        OtpVerificationScreen.routeName,
-        arguments: {'phoneNumber': formattedPhone},
-      );
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
                   // App Logo (Icon.png from Desktop)
                   Center(
@@ -114,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Center(
                     child: Column(
                       children: [
-                        Text(
+                        const Text(
                           'Welcome to Handora',
                           style: TextStyle(
                             color: AppColors.onSurface,
@@ -125,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Text(
+                        const Text(
                           'हैंडोरा में आपका स्वागत है',
                           style: TextStyle(
                             color: AppColors.onSurfaceVariant,
@@ -138,52 +85,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 36),
 
-                  // Input Label (Bilingual)
-                  Text(
-                    'Login with Mobile Number / मोबाइल नंबर से लॉगिन',
-                    style: TextStyle(
-                      color: AppColors.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      fontFamily: 'Inter',
-                    ),
-                  ),
+                  // Primary: Continue with Phone (Primary for rural artisans)
+                  _buildPrimaryPhoneButton(isHi),
 
-                  const SizedBox(height: 10),
-
-                  // Phone Input Card Container with +91 Prefix & Clear Button
-                  _buildPhoneInputField(),
-
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      _errorMessage!,
-                      style: const TextStyle(
-                        color: Color(0xFFBA1A1A),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 16),
-
-                  // Primary Send OTP Button
-                  _buildSendOtpButton(isHi),
-
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 20),
 
                   // OR / या Divider
                   _buildOrDivider(),
 
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
 
                   // Continue with Email Button
                   _buildOutlinedSocialButton(
                     icon: Icons.mail_outline_rounded,
-                    label: 'Continue with Email',
+                    label: isHi
+                        ? 'ईमेल से जारी रखें (Continue with Email)'
+                        : 'Continue with Email',
                     onTap: () {
                       Navigator.pushNamed(
                         context,
@@ -208,97 +127,8 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-
-
-  Widget _buildPhoneInputField() {
-    final hasText = _phoneController.text.isNotEmpty;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _errorMessage != null
-              ? const Color(0xFFBA1A1A)
-              : AppColors.surfaceDim,
-          width: 1.5,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadowColor,
-            blurRadius: 16,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // +91 Country Code
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: const Text(
-              '+91',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurface,
-              ),
-            ),
-          ),
-          // Vertical Divider
-          Container(
-            width: 1,
-            height: 28,
-            color: AppColors.surfaceDim,
-          ),
-          // Text Input Field
-          Expanded(
-            child: TextField(
-              controller: _phoneController,
-              focusNode: _phoneFocusNode,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(10),
-              ],
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurface,
-                letterSpacing: 0.8,
-              ),
-              decoration: const InputDecoration(
-                hintText: '9876543210',
-                hintStyle: TextStyle(
-                  color: Color(0xFF9E8E84),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: 0.5,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              ),
-            ),
-          ),
-          // Clear Button
-          if (hasText)
-            IconButton(
-              icon: const Icon(
-                Icons.close_rounded,
-                size: 18,
-                color: AppColors.onSurfaceVariant,
-              ),
-              onPressed: () {
-                _phoneController.clear();
-                setState(() => _errorMessage = null);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSendOtpButton(bool isHi) {
+  /// Primary button: Continue with Phone -> opens PhoneLoginScreen
+  Widget _buildPrimaryPhoneButton(bool isHi) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
@@ -311,33 +141,43 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleSendOtp,
+        onPressed: () {
+          Navigator.pushNamed(
+            context,
+            PhoneLoginScreen.routeName,
+          );
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
         ),
-        child: _isLoading
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : Text(
-                isHi ? 'ओटीपी भेजें (Send OTP)' : 'Send OTP',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.phone_android_rounded,
+              size: 22,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              isHi
+                  ? 'फ़ोन नंबर से जारी रखें (Continue with Phone)'
+                  : 'Continue with Phone',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+                fontFamily: 'Inter',
               ),
+            ),
+          ],
+        ),
       ),
     );
   }
