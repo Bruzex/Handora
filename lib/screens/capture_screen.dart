@@ -98,8 +98,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
     });
 
     try {
-      // 1. Gemini AI analysis — may throw SocketException when offline
-      final ai = await GeminiService.analyzeProductImage(_image!);
+      // 1. Gemini AI analysis — with optional history-aware pricing
+      final ai = await GeminiService.analyzeProductImage(
+        _image!,
+        userId: appState.currentUserId,
+      );
 
       if (mounted) {
         setState(() => _statusMessage = isHi
@@ -109,9 +112,13 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
       final nameEn = ai['title_en'] as String? ?? 'Handmade Product';
       final nameHi = ai['title_hi'] as String? ?? 'उत्पाद';
-      final description = ai['description'] as String? ?? '';
+      final description = (ai['description_en'] as String?)?.isNotEmpty == true
+          ? ai['description_en'] as String
+          : (ai['description'] as String? ?? '');
       final category = ai['category'] as String? ?? 'Other';
-      final priceInRupees = (ai['estimated_price_inr'] as num?)?.toInt() ?? 500;
+      final priceInRupees = (ai['price_inr'] as num?)?.toInt() ??
+          (ai['estimated_price_inr'] as num?)?.toInt() ??
+          500;
       // Retain original product id if updating an existing draft
       final productId = widget.existingProduct?.id ?? const Uuid().v4();
 
@@ -187,16 +194,24 @@ class _CaptureScreenState extends State<CaptureScreen> {
       debugPrint('📴 Network error (ClientException) — saving draft product');
       await _saveOfflineDraft(dataProvider, appState);
     } catch (e) {
-      // ── Other unexpected errors (API key missing, JSON parse, etc.) ──
+      // ── Other unexpected errors (API key missing, JSON parse, quota 429, etc.) ──
       dataProvider.setProcessingAi(false);
       debugPrint('❌ Capture error: $e');
       if (mounted) {
+        final friendlyError = GeminiService.formatGeminiError(e, isHi: isHi);
         setState(() {
           _loading = false;
-          _error = isHi
-              ? 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।'
-              : 'Something went wrong. Please try again.';
+          _error = friendlyError;
         });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(friendlyError),
+            backgroundColor: AppColors.red600,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     }
   }

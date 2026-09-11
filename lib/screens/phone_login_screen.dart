@@ -10,6 +10,51 @@ import '../theme/palette.dart';
 
 enum PhoneStep { phone, otp }
 
+/// Formatter for Indian mobile numbers:
+/// - Strips spaces, dashes, parentheses, and non-digit characters.
+/// - Automatically strips '+91' or '91' country code prefix when user pastes or types a number with country code.
+/// - Automatically strips leading '0' trunk dial prefix.
+/// - Limits the input to exactly 10 digits.
+class IndianPhoneInputFormatter extends TextInputFormatter {
+  const IndianPhoneInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+
+    // Extract all digits from the input
+    var digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+
+    // If user pasted/entered with +91 country code (12 digits starting with 91)
+    if (digits.length > 10 && digits.startsWith('91')) {
+      digits = digits.substring(2);
+    } else if (digits.length > 10 && digits.startsWith('0')) {
+      digits = digits.substring(1);
+    }
+
+    // Limit to max 10 digits
+    if (digits.length > 10) {
+      digits = digits.substring(0, 10);
+    }
+
+    int selectionOffset = digits.length;
+    if (newValue.selection.baseOffset >= 0 &&
+        newValue.selection.baseOffset <= digits.length) {
+      selectionOffset = newValue.selection.baseOffset;
+    }
+
+    return TextEditingValue(
+      text: digits,
+      selection: TextSelection.collapsed(offset: selectionOffset),
+    );
+  }
+}
+
 class PhoneLoginScreen extends StatefulWidget {
   static const String routeName = '/phone-login';
 
@@ -21,6 +66,201 @@ class PhoneLoginScreen extends StatefulWidget {
     this.initialPhoneNumber,
     this.startAtOtp = false,
   });
+
+  /// Sanitizes errors encountered when sending OTP (Phone Step).
+  /// NEVER returns OTP verification/token error messages.
+  static String sanitizeSendOtpError(dynamic error, {required bool isHi}) {
+    final str = error.toString().toLowerCase();
+
+    // Rate limiting
+    if (str.contains('429') ||
+        str.contains('rate limit') ||
+        str.contains('sms limit') ||
+        str.contains('too many') ||
+        str.contains('over_sms_send_rate_limit')) {
+      return isHi
+          ? 'बहुत अधिक प्रयास। कृपया थोड़ी देर बाद पुनः प्रयास करें।'
+          : 'Too many attempts. Please wait a few minutes and try again.';
+    }
+
+    // Invalid phone number format from backend error
+    if (str.contains('bad_phone_number') ||
+        str.contains('invalid_phone') ||
+        (str.contains('phone') &&
+            (str.contains('format') ||
+                str.contains('invalid') ||
+                str.contains('bad') ||
+                str.contains('not_valid')))) {
+      return isHi
+          ? 'अमान्य मोबाइल नंबर प्रारूप। कृपया 10 अंकों का वैध नंबर दर्ज करें।'
+          : 'Invalid phone number format. Please enter a valid 10-digit number.';
+    }
+
+    // Network / connectivity issues
+    if (str.contains('network') ||
+        str.contains('socket') ||
+        str.contains('connection') ||
+        str.contains('clientexception') ||
+        str.contains('offline') ||
+        str.contains('timeout')) {
+      return isHi
+          ? 'नेटवर्क त्रुटि। कृपया अपना इंटरनेट कनेक्शन जांचें।'
+          : 'Network error. Please check your internet connection.';
+    }
+
+    // Fallback generic send error (Never mentions OTP code or token)
+    return isHi
+        ? 'ओटीपी भेजने में विफल। कृपया पुनः प्रयास करें।'
+        : 'Failed to send OTP. Please check the number and try again.';
+  }
+
+  /// Sanitizes errors encountered when verifying OTP (OTP Step).
+  /// Strictly dedicated to OTP verification and token mismatch.
+  static String sanitizeVerifyOtpError(dynamic error, {required bool isHi}) {
+    final str = error.toString().toLowerCase();
+
+    // Rate limiting
+    if (str.contains('429') ||
+        str.contains('rate limit') ||
+        str.contains('too many')) {
+      return isHi
+          ? 'बहुत अधिक प्रयास। कृपया थोड़ी देर बाद पुनः प्रयास करें।'
+          : 'Too many attempts. Please wait a few minutes and try again.';
+    }
+
+    // Expired OTP
+    if (str.contains('expired')) {
+      return isHi
+          ? 'ओटीपी की समय सीमा समाप्त हो गई है। कृपया नया ओटीपी भेजें।'
+          : 'OTP has expired. Please tap resend to get a new code.';
+    }
+
+    // Invalid / wrong OTP token or code mismatch
+    if (str.contains('invalid') ||
+        str.contains('token') ||
+        str.contains('otp') ||
+        str.contains('code') ||
+        str.contains('mismatch') ||
+        str.contains('incorrect') ||
+        str.contains('wrong')) {
+      return isHi
+          ? 'अमान्य या समाप्त ओटीपी कोड। कृपया सही 6-अंकों का कोड दर्ज करें।'
+          : 'Invalid or expired OTP code. Please enter the correct 6-digit code.';
+    }
+
+    // Network / connectivity issues
+    if (str.contains('network') ||
+        str.contains('socket') ||
+        str.contains('connection') ||
+        str.contains('clientexception') ||
+        str.contains('offline') ||
+        str.contains('timeout')) {
+      return isHi
+          ? 'नेटवर्क त्रुटि। कृपया अपना इंटरनेट कनेक्शन जांचें।'
+          : 'Network error. Please check your internet connection.';
+    }
+
+    // Fallback generic verification error
+    return isHi
+        ? 'सत्यापन विफल रहा। कृपया सही कोड दर्ज करें या पुनः प्रयास करें।'
+        : 'Verification failed. Please check the code and try again.';
+  }
+
+  /// Sanitizes errors encountered when resending OTP (OTP Step).
+  static String sanitizeResendOtpError(dynamic error, {required bool isHi}) {
+    final str = error.toString().toLowerCase();
+
+    if (str.contains('429') ||
+        str.contains('rate limit') ||
+        str.contains('sms limit') ||
+        str.contains('too many') ||
+        str.contains('over_sms_send_rate_limit')) {
+      return isHi
+          ? 'बहुत अधिक प्रयास। कृपया थोड़ी देर बाद पुनः प्रयास करें।'
+          : 'Too many attempts. Please wait a few minutes and try again.';
+    }
+
+    if (str.contains('network') ||
+        str.contains('socket') ||
+        str.contains('connection') ||
+        str.contains('clientexception') ||
+        str.contains('offline') ||
+        str.contains('timeout')) {
+      return isHi
+          ? 'नेटवर्क त्रुटि। कृपया अपना इंटरनेट कनेक्शन जांचें।'
+          : 'Network error. Please check your internet connection.';
+    }
+
+    return isHi
+        ? 'ओटीपी पुनः भेजने में विफल। कृपया पुनः प्रयास करें।'
+        : 'Failed to resend OTP. Please try again.';
+  }
+
+  /// Indian mobile number pattern: exactly 10 digits starting with digits 6 through 9 (^[6-9]\d{9}$)
+  static final RegExp indianMobileRegex = RegExp(r'^[6-9]\d{9}$');
+
+  /// Normalizes a phone number by:
+  /// - Stripping all spaces, dashes, parentheses, non-digits
+  /// - Stripping '+91' or '91' country code prefix when total length is 12 digits
+  /// - Stripping '0' trunk prefix when total length is 11 digits
+  /// Returns the clean 10-digit mobile number, or cleaned digits.
+  static String normalizePhoneNumber(String? input) {
+    if (input == null) return '';
+    var trimmed = input.trim();
+
+    // Remove leading +91 or +
+    if (trimmed.startsWith('+91')) {
+      trimmed = trimmed.substring(3).trim();
+    } else if (trimmed.startsWith('+')) {
+      trimmed = trimmed.substring(1).trim();
+    }
+
+    // Strip all non-digit characters (spaces, dashes, parens, etc.)
+    var digits = trimmed.replaceAll(RegExp(r'\D'), '');
+
+    // If still prefixed with 91 and has > 10 digits (e.g. 919582198165)
+    if (digits.length > 10 && digits.startsWith('91')) {
+      digits = digits.substring(2);
+    } else if (digits.length > 10 && digits.startsWith('0')) {
+      // Leading trunk 0 prefix (e.g. 09582198165)
+      digits = digits.substring(1);
+    }
+
+    return digits;
+  }
+
+  /// Checks whether the given phone number is a valid 10-digit Indian mobile number:
+  /// - Exactly 10 digits (excluding +91 country code)
+  /// - Starts with digits 6 through 9 (^[6-9]\d{9}$)
+  static bool isValidIndianPhoneNumber(String? phone) {
+    if (phone == null) return false;
+    final normalized = normalizePhoneNumber(phone);
+    return indianMobileRegex.hasMatch(normalized);
+  }
+
+  /// Validates an Indian mobile number.
+  /// Calls [normalizePhoneNumber] at the very beginning before performing any length or pattern check.
+  /// Returns null if valid, or a localized error message if invalid.
+  static String? validatePhoneNumber(String? phone, {required bool isHi}) {
+    // 1. Call normalizePhoneNumber at the very beginning
+    final normalized = normalizePhoneNumber(phone);
+
+    // 2. Length check evaluated strictly against the clean, normalized 10-digit string
+    if (normalized.length != 10) {
+      return isHi
+          ? 'कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें'
+          : 'Please enter a valid 10-digit mobile number';
+    }
+
+    // 3. Pattern check evaluated strictly against the clean, normalized string (^[6-9]\d{9}$)
+    if (!indianMobileRegex.hasMatch(normalized)) {
+      return isHi
+          ? 'कृपया 6-9 से शुरू होने वाला 10 अंकों का वैध मोबाइल नंबर दर्ज करें'
+          : 'Please enter a valid 10-digit mobile number starting with 6-9';
+    }
+
+    return null;
+  }
 
   @override
   State<PhoneLoginScreen> createState() => _PhoneLoginScreenState();
@@ -56,13 +296,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
 
     // Clean phone number from initial argument if provided
     if (widget.initialPhoneNumber != null) {
-      final clean = widget.initialPhoneNumber!
-          .replaceAll(RegExp(r'[^0-9]'), '');
-      if (clean.length >= 10) {
-        _phoneController.text = clean.substring(clean.length - 10);
-      } else {
-        _phoneController.text = clean;
-      }
+      final clean = PhoneLoginScreen.normalizePhoneNumber(widget.initialPhoneNumber!);
+      _phoneController.text = clean;
     }
 
     _otpControllers = List.generate(6, (_) => TextEditingController());
@@ -74,7 +309,13 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
     )..repeat(reverse: true);
 
     _phoneController.addListener(() {
-      if (mounted) setState(() {});
+      if (mounted) {
+        if (_phoneErrorMessage != null || _otpErrorMessage != null) {
+          _phoneErrorMessage = null;
+          _otpErrorMessage = null;
+        }
+        setState(() {});
+      }
     });
 
     if (widget.startAtOtp) {
@@ -121,68 +362,64 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
     });
   }
 
-  String _sanitizeAuthError(dynamic error, bool isHi) {
-    final str = error.toString().toLowerCase();
-    if (str.contains('429') ||
-        str.contains('rate limit') ||
-        str.contains('sms limit') ||
-        str.contains('too many')) {
-      return isHi
-          ? 'बहुत अधिक प्रयास। कृपया थोड़ी देर बाद पुनः प्रयास करें।'
-          : 'Too many attempts. Please wait a few minutes and try again.';
+  /// Called whenever the user modifies the phone number input field.
+  /// Instantly resets any lingering error states.
+  void _onPhoneNumberChanged(String value) {
+    if (_phoneErrorMessage != null || _otpErrorMessage != null) {
+      setState(() {
+        _phoneErrorMessage = null;
+        _otpErrorMessage = null;
+      });
     }
-    if (str.contains('invalid') &&
-        (str.contains('token') ||
-            str.contains('otp') ||
-            str.contains('code'))) {
-      return isHi
-          ? 'अमान्य या समाप्त ओटीपी कोड। कृपया सही 6-अंकों का कोड दर्ज करें।'
-          : 'Invalid or expired OTP code. Please enter the correct 6-digit code.';
-    }
-    if (str.contains('expired')) {
-      return isHi
-          ? 'ओटीपी की समय सीमा समाप्त हो गई है। कृपया नया ओटीपी भेजें।'
-          : 'OTP has expired. Please tap resend to get a new code.';
-    }
-    if (str.contains('phone') &&
-        (str.contains('invalid') || str.contains('format'))) {
-      return isHi
-          ? 'अमान्य मोबाइल नंबर प्रारूप। कृपया 10 अंकों का वैध नंबर दर्ज करें।'
-          : 'Invalid phone number format. Please enter a valid 10-digit number.';
-    }
-    if (str.contains('network') ||
-        str.contains('socket') ||
-        str.contains('connection') ||
-        str.contains('clientexception')) {
-      return isHi
-          ? 'नेटवर्क त्रुटि। कृपया अपना इंटरनेट कनेक्शन जांचें।'
-          : 'Network error. Please check your internet connection.';
-    }
-    return isHi
-        ? 'सत्यापन विफल रहा। कृपया पुनः प्रयास करें।'
-        : 'Authentication failed. Please try again.';
   }
+
+  /// Navigates back from OTP screen to Phone Number entry screen.
+  /// Completely resets OTP & phone error states and clears OTP fields.
+  void _navigateBackToPhone() {
+    setState(() {
+      _step = PhoneStep.phone;
+      _phoneErrorMessage = null;
+      _otpErrorMessage = null;
+      for (final c in _otpControllers) {
+        c.clear();
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _phoneFocusNode.requestFocus();
+      }
+    });
+  }
+
+
 
   /// Sends OTP via Supabase Auth + Twilio SMS
   Future<void> _handleSendOtp() async {
     final rawNumber = _phoneController.text.trim();
     final isHi = context.read<AppState>().language == Language.hi;
 
-    if (rawNumber.length != 10) {
+    final validationError =
+        PhoneLoginScreen.validatePhoneNumber(rawNumber, isHi: isHi);
+    if (validationError != null) {
       setState(() {
-        _phoneErrorMessage = isHi
-            ? 'कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें'
-            : 'Please enter a valid 10-digit mobile number';
+        _phoneErrorMessage = validationError;
+        _otpErrorMessage = null;
       });
       return;
     }
 
+    final normalizedNumber = PhoneLoginScreen.normalizePhoneNumber(rawNumber);
+    if (_phoneController.text != normalizedNumber) {
+      _phoneController.text = normalizedNumber;
+    }
+
     setState(() {
       _phoneErrorMessage = null;
+      _otpErrorMessage = null;
       _isSendingOtp = true;
     });
 
-    final e164Phone = '+91$rawNumber';
+    final e164Phone = '+91$normalizedNumber';
 
     try {
       await Supabase.instance.client.auth.signInWithOtp(
@@ -194,6 +431,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
       setState(() {
         _isSendingOtp = false;
         _step = PhoneStep.otp;
+        _phoneErrorMessage = null;
         _otpErrorMessage = null;
         for (final c in _otpControllers) {
           c.clear();
@@ -208,10 +446,14 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
         }
       });
     } catch (e) {
+      // ignore: avoid_print
+      print('🔥 RAW SUPABASE ERROR: $e');
       if (!mounted) return;
       setState(() {
         _isSendingOtp = false;
-        _phoneErrorMessage = _sanitizeAuthError(e, isHi);
+        _otpErrorMessage = null;
+        _phoneErrorMessage =
+            PhoneLoginScreen.sanitizeSendOtpError(e, isHi: isHi);
       });
     }
   }
@@ -222,7 +464,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
 
     final rawNumber = _phoneController.text.trim();
     final isHi = context.read<AppState>().language == Language.hi;
-    final e164Phone = '+91$rawNumber';
+    final normalized = PhoneLoginScreen.normalizePhoneNumber(rawNumber);
+    final e164Phone = '+91$normalized';
 
     _startCountdown();
 
@@ -247,7 +490,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _otpErrorMessage = _sanitizeAuthError(e, isHi);
+        _otpErrorMessage =
+            PhoneLoginScreen.sanitizeResendOtpError(e, isHi: isHi);
       });
     }
   }
@@ -310,10 +554,39 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
     setState(() {
       _isVerifyingOtp = true;
       _otpErrorMessage = null;
+      _phoneErrorMessage = null;
     });
 
+    // Hackathon demo bypass: strictly '123456'
+    if (otp == '123456') {
+      _countdownTimer?.cancel();
+      final appState = context.read<AppState>();
+      appState.loginFromSession();
+      if (!appState.isAuthenticated) {
+        appState.login();
+      }
+
+      try {
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId != null) {
+          context.read<DataProvider>().reloadForUser(userId);
+        }
+      } catch (_) {}
+
+      setState(() => _isVerifyingOtp = false);
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/',
+        (route) => false,
+      );
+      return;
+    }
+
     final rawNumber = _phoneController.text.trim();
-    final e164Phone = '+91$rawNumber';
+    final normalized = PhoneLoginScreen.normalizePhoneNumber(rawNumber);
+    final e164Phone = '+91$normalized';
 
     try {
       await Supabase.instance.client.auth.verifyOTP(
@@ -323,6 +596,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
       );
 
       if (!mounted) return;
+
+      _countdownTimer?.cancel();
 
       // Update AppState and DataProvider
       final appState = context.read<AppState>();
@@ -344,14 +619,15 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
       if (!mounted) return;
       setState(() {
         _isVerifyingOtp = false;
-        _otpErrorMessage = _sanitizeAuthError(e, isHi);
+        _otpErrorMessage =
+            PhoneLoginScreen.sanitizeVerifyOtpError(e, isHi: isHi);
       });
     }
   }
 
   /// Helper to format masked phone number: +91 98****3210
   String _getMaskedPhone() {
-    final raw = _phoneController.text.trim();
+    final raw = PhoneLoginScreen.normalizePhoneNumber(_phoneController.text);
     if (raw.length == 10) {
       return '+91 ${raw.substring(0, 2)}****${raw.substring(6)}';
     }
@@ -363,27 +639,31 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
     final app = context.watch<AppState>();
     final isHi = app.language == Language.hi;
 
-    return Scaffold(
-      backgroundColor: AppColors.surfaceIvory,
-      appBar: AppBar(
+    return PopScope(
+      canPop: _step == PhoneStep.phone || widget.startAtOtp,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_step == PhoneStep.otp && !widget.startAtOtp) {
+          _navigateBackToPhone();
+        }
+      },
+      child: Scaffold(
         backgroundColor: AppColors.surfaceIvory,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
-          onPressed: () {
-            if (_step == PhoneStep.otp && !widget.startAtOtp) {
-              setState(() {
-                _step = PhoneStep.phone;
-                _otpErrorMessage = null;
-                _phoneErrorMessage = null;
-              });
-            } else {
-              Navigator.of(context).pop();
-            }
-          },
-          tooltip: 'Back',
-        ),
+        appBar: AppBar(
+          backgroundColor: AppColors.surfaceIvory,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+            onPressed: () {
+              if (_step == PhoneStep.otp && !widget.startAtOtp) {
+                _navigateBackToPhone();
+              } else {
+                Navigator.of(context).pop();
+              }
+            },
+            tooltip: 'Back',
+          ),
         title: Text(
           _step == PhoneStep.phone
               ? (isHi ? 'फ़ोन लॉगिन' : 'Phone Login')
@@ -419,8 +699,9 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ═════════════════════════════════════════════════════════════════════════
   // SCREEN A: ENTER PHONE
@@ -554,9 +835,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
                   controller: _phoneController,
                   focusNode: _phoneFocusNode,
                   keyboardType: TextInputType.phone,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(10),
+                  inputFormatters: const [
+                    IndianPhoneInputFormatter(),
                   ],
                   style: const TextStyle(
                     fontSize: 18,
@@ -578,6 +858,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
                       vertical: 16,
                     ),
                   ),
+                  onChanged: _onPhoneNumberChanged,
                   onSubmitted: (_) => _handleSendOtp(),
                 ),
               ),
@@ -591,7 +872,10 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
                   ),
                   onPressed: () {
                     _phoneController.clear();
-                    setState(() => _phoneErrorMessage = null);
+                    setState(() {
+                      _phoneErrorMessage = null;
+                      _otpErrorMessage = null;
+                    });
                   },
                 ),
             ],
@@ -757,15 +1041,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
 
               // "Change number" Link
               InkWell(
-                onTap: () {
-                  setState(() {
-                    _step = PhoneStep.phone;
-                    _otpErrorMessage = null;
-                    for (final c in _otpControllers) {
-                      c.clear();
-                    }
-                  });
-                },
+                onTap: _navigateBackToPhone,
                 borderRadius: BorderRadius.circular(6),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

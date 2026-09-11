@@ -131,6 +131,7 @@ class _Root extends StatelessWidget {
       initialRoute: app.isAuthenticated ? '/' : LoginScreen.routeName,
       routes: {
         '/': (context) => const _Shell(),
+        '/home': (context) => const _Shell(),
         LoginScreen.routeName: (context) => const LoginScreen(),
         PhoneLoginScreen.routeName: (context) {
           final args =

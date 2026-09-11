@@ -1,15 +1,127 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../models/product.dart';
+import 'database_helper.dart';
+import 'supabase_service.dart';
 
 class GeminiService {
-  /// Analyzes a product image using Google Gemini API to extract title, Hindi title, description, category, and price.
-  static Future<Map<String, dynamic>> analyzeProductImage(File imageFile) async {
+  /// Fetches the artisan's last [limit] products (category + price + title) from local SQLite or Supabase.
+  /// Returns an empty list if no products exist or on any error (guaranteed never to throw).
+  static Future<List<Map<String, dynamic>>> fetchArtisanProductHistory({
+    String? userId,
+    int limit = 5,
+  }) async {
+    // 1. Try local SQLite database first (offline-first & low latency)
+    try {
+      final db = DatabaseHelper.instance;
+      List<Product> products = [];
+      if (userId != null && userId.isNotEmpty) {
+        products = await db.queryProductsForUser(userId);
+      } else {
+        products = await db.queryAllProducts();
+      }
+
+      final validLocal = products
+          .where((p) => p.priceInRupees > 0 && p.status == ProductStatus.live)
+          .take(limit)
+          .map((p) => {
+                'title': p.nameEn,
+                'category': p.category,
+                'price_inr': p.priceInRupees,
+              })
+          .toList();
+
+      if (validLocal.isNotEmpty) {
+        debugPrint('📦 Loaded ${validLocal.length} history items from local DB for pricing');
+        return validLocal;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Local history fetch for pricing failed (falling back): $e');
+    }
+
+    // 2. Try Supabase cloud database if local was empty or failed
+    try {
+      final remote = await SupabaseService.fetchProducts();
+      final validRemote = remote
+          .where((p) => p.priceInRupees > 0 && p.status == ProductStatus.live)
+          .take(limit)
+          .map((p) => {
+                'title': p.nameEn,
+                'category': p.category,
+                'price_inr': p.priceInRupees,
+              })
+          .toList();
+
+      if (validRemote.isNotEmpty) {
+        debugPrint('☁️ Loaded ${validRemote.length} history items from Supabase for pricing');
+        return validRemote;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Supabase history fetch for pricing failed (falling back): $e');
+    }
+
+    return [];
+  }
+
+  /// Formats Gemini API errors into clean, bilingual, user-friendly messages for SnackBars.
+  static String formatGeminiError(dynamic error, {bool? isHi}) {
+    final errStr = error.toString();
+    if (errStr.contains('429') ||
+        errStr.toLowerCase().contains('quota exceeded') ||
+        errStr.contains('RESOURCE_EXHAUSTED')) {
+      if (isHi == true) {
+        return 'सर्वर अभी व्यस्त है। कृपया 1 मिनट बाद पुनः प्रयास करें।';
+      } else if (isHi == false) {
+        return 'Server is currently busy. Please wait a minute and try again.';
+      }
+      return 'Server is currently busy. Please wait a minute and try again. / सर्वर अभी व्यस्त है। कृपया 1 मिनट बाद पुनः प्रयास करें।';
+    }
+
+    if (errStr.toLowerCase().contains('api_key') ||
+        errStr.contains('GEMINI_API_KEY')) {
+      if (isHi == true) {
+        return 'AI सेवा कॉन्फ़िगरेशन समस्या। कृपया पुनः प्रयास करें।';
+      } else if (isHi == false) {
+        return 'AI service configuration issue. Please check API key.';
+      }
+      return 'AI service configuration issue. / AI सेवा कॉन्फ़िगरेशन समस्या।';
+    }
+
+    if (isHi == true) {
+      return 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।';
+    } else if (isHi == false) {
+      return 'Something went wrong. Please try again.';
+    }
+    return 'Something went wrong. Please try again. / कुछ गलत हो गया। कृपया पुनः प्रयास करें।';
+  }
+
+  /// Analyzes a product image using Google Gemini API with optional history-aware pricing.
+  ///
+  /// Incorporates the artisan's recent pricing history (up to 5 products) as a reference
+  /// baseline. If history is unavailable, empty, or fails to fetch, it falls back seamlessly
+  /// to local Indian market rates without crashing.
+  static Future<Map<String, dynamic>> analyzeProductImage(
+    File imageFile, {
+    String? userId,
+    List<Map<String, dynamic>>? history,
+  }) async {
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     if (apiKey.isEmpty) {
       throw Exception('GEMINI_API_KEY is not configured in .env');
+    }
+
+    // Try fetching pricing history if not explicitly provided
+    List<Map<String, dynamic>> pricingHistory = history ?? [];
+    if (pricingHistory.isEmpty) {
+      try {
+        pricingHistory = await fetchArtisanProductHistory(userId: userId);
+      } catch (e) {
+        debugPrint('⚠️ Pricing history fetch bypassed: $e');
+        pricingHistory = [];
+      }
     }
 
     final bytes = await imageFile.readAsBytes();
@@ -19,48 +131,81 @@ class GeminiService {
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=$apiKey',
     );
 
-    final body = {
-      "contents": [
-        {
-          "parts": [
-            {
-              "text": """
-You are a product pricing expert for Indian local markets.
+    final String historyBlock;
+    if (pricingHistory.isNotEmpty) {
+      final historyFormatted = pricingHistory.map((item) {
+        final title = item['title'] ?? item['name'] ?? '';
+        final cat = item['category'] ?? 'General';
+        final price = item['price_inr'] ?? item['price'] ?? 0;
+        return title.toString().isNotEmpty
+            ? '- $title (Category: $cat): ₹$price'
+            : '- Category: $cat: ₹$price';
+      }).join('\n');
+
+      historyBlock = """
+
+Artisan's recent product pricing history:
+$historyFormatted
+
+Pricing guidelines using history:
+- Use the image as the PRIMARY source of product identity.
+- Use the artisan's pricing history ONLY as a reference baseline for similar items/categories from this specific artisan.
+- If the item in the image belongs to a similar category, calibrate the new item's price relative to their past pricing.
+- If the history is empty, irrelevant, or from unrelated categories, estimate a fair local Indian market price for handmade goods.
+""";
+    } else {
+      historyBlock = """
+
+No artisan pricing history is available. Estimate a fair local Indian market price for handmade goods based solely on the item shown in the image.
+""";
+    }
+
+    final promptText = """
+You are a product cataloging and pricing expert for Indian local artisans and craftspeople selling on ONDC / Handora.
 
 Look at the image carefully and identify what the item actually is.
 
 Pricing instructions (CRITICAL):
-- Evaluate the item strictly at Delhi local market / artisan bazaar / mandi rates in INR.
-- Think about what a local shopkeeper or street vendor would charge, NOT international or e-commerce prices.
-- Estimate a realistic lower bound and upper bound price range in INR.
-- Set "estimated_price_inr" to the LOWER BOUND of that range (the cheapest realistic price).
-- Examples: a basic clay pot = 80-150 INR (use 80), a hand-knit scarf = 200-400 INR (use 200), a plate of biryani = 120-250 INR (use 120), wooden toys = 60-200 INR (use 60).
-
-Return ONLY a valid JSON object with these exact keys:
+- Evaluate the item strictly at local Indian market / artisan bazaar / mandi rates in INR.
+- Think about what a local artisan, street vendor, or village bazaar charges, NOT luxury retail or export prices.
+- Avoid luxury/export fantasy pricing. Prefer practical village/town market price range.
+- "price_inr" MUST be a realistic, positive integer in INR (e.g. 80, 150, 250, 450, 800).
+$historyBlock
+Return ONLY a valid, parseable JSON object with NO markdown codeblocks, matching this exact schema:
 {
-  "title_en": "accurate short English name",
-  "title_hi": "accurate short Hindi name",
-  "description": "2-3 sentence honest description",
+  "title_en": "accurate concise English name",
+  "title_hi": "accurate concise Hindi name",
+  "description_en": "2-3 sentence honest English description highlighting materials and craft",
+  "description_hi": "2-3 sentence natural Hindi description",
   "category": "one of: Pottery, Textiles, Woodwork, Jewelry, Metalwork, Food, Other",
-  "estimated_price_inr": 80
+  "price_inr": 250
 }
 
 Rules:
 - Be accurate about what the item is. If it is food, call it food. If it is a pot, call it a pot.
 - Do NOT force items into "artisan handicraft" if they are clearly something else.
 - Do NOT inflate prices. Think local Indian wholesale/street rates, not retail or export.
-- Return only pure JSON, no markdown formatting.
-"""
-            },
+- "price_inr" MUST be a positive integer in INR.
+- Return pure JSON only, without any wrapping markdown blocks or explanations.
+""";
+
+    final body = {
+      "contents": [
+        {
+          "parts": [
+            {"text": promptText},
             {
               "inline_data": {
                 "mime_type": "image/jpeg",
-                "data": base64Image
+                "data": base64Image,
               }
             }
           ]
         }
-      ]
+      ],
+      "generationConfig": {
+        "temperature": 0.2,
+      }
     };
 
     final response = await http.post(
@@ -82,11 +227,50 @@ Rules:
     final text = candidates[0]['content']['parts'][0]['text'] as String;
 
     final cleaned = text
-        .replaceAll('```json', '')
-        .replaceAll('```', '')
+        .replaceAll(RegExp(r'^```json\s*', multiLine: true), '')
+        .replaceAll(RegExp(r'^```\s*', multiLine: true), '')
         .trim();
 
-    return jsonDecode(cleaned) as Map<String, dynamic>;
+    Map<String, dynamic> parsed;
+    try {
+      parsed = jsonDecode(cleaned) as Map<String, dynamic>;
+    } catch (e) {
+      final start = cleaned.indexOf('{');
+      final end = cleaned.lastIndexOf('}');
+      if (start != -1 && end != -1 && end > start) {
+        parsed = jsonDecode(cleaned.substring(start, end + 1)) as Map<String, dynamic>;
+      } else {
+        rethrow;
+      }
+    }
+
+    // Ensure price_inr is a positive integer
+    final rawPrice = parsed['price_inr'] ?? parsed['estimated_price_inr'];
+    int priceInr = 500;
+    if (rawPrice is num) {
+      priceInr = rawPrice.toInt();
+    } else if (rawPrice is String) {
+      priceInr = int.tryParse(rawPrice.replaceAll(RegExp(r'[^0-9]'), '')) ?? 500;
+    }
+    if (priceInr <= 0) priceInr = 100;
+
+    final descEn = (parsed['description_en'] ?? parsed['description'] ?? '').toString();
+    final descHi = (parsed['description_hi'] ?? '').toString();
+    final titleEn = (parsed['title_en'] ?? 'Handmade Product').toString();
+    final titleHi = (parsed['title_hi'] ?? 'हस्तशिल्प उत्पाद').toString();
+    final category = (parsed['category'] ?? 'Other').toString();
+
+    return {
+      'title_en': titleEn,
+      'title_hi': titleHi,
+      'description_en': descEn,
+      'description_hi': descHi,
+      'category': category,
+      'price_inr': priceInr,
+      // Backward compatibility keys
+      'estimated_price_inr': priceInr,
+      'description': descEn.isNotEmpty ? descEn : descHi,
+    };
   }
 
   /// Processes a voice recording containing edit instructions for an existing product.
