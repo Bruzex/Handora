@@ -102,6 +102,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
       final ai = await GeminiService.analyzeProductImage(
         _image!,
         userId: appState.currentUserId,
+        language: appState.selectedLanguage,
       );
 
       if (mounted) {
@@ -198,7 +199,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
       dataProvider.setProcessingAi(false);
       debugPrint('❌ Capture error: $e');
       if (mounted) {
-        final friendlyError = GeminiService.formatGeminiError(e, isHi: isHi);
+        final friendlyError = GeminiService.formatGeminiError(
+          e,
+          isHi: isHi,
+          language: appState.selectedLanguage,
+        );
         setState(() {
           _loading = false;
           _error = friendlyError;
@@ -293,6 +298,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final s = app.strings;
     final isHi = app.language == Language.hi;
     final dark = Theme.of(context).brightness == Brightness.dark;
 
@@ -304,8 +310,8 @@ class _CaptureScreenState extends State<CaptureScreen> {
                   ? (isHi ? 'उत्पाद अपडेट हो गया' : 'Product Updated')
                   : (isHi ? 'उत्पाद जोड़ा गया' : 'Product Added'))
               : (widget.existingProduct != null
-                  ? (isHi ? 'लिस्टिंग पूरी करें' : 'Complete Listing')
-                  : (isHi ? 'फोटो खींचें और कैटलॉग बनाएं' : 'Snap & AI Catalog')),
+                  ? s.completeListing
+                  : s.captureTitle),
           style: TextStyle(
             fontWeight: FontWeight.w800,
             color: dark ? Colors.white : AppColors.ink900,
@@ -320,13 +326,13 @@ class _CaptureScreenState extends State<CaptureScreen> {
           duration: const Duration(milliseconds: 400),
           child: _createdProduct != null
               ? _buildSuccessView(isHi, dark)
-              : _buildCaptureView(isHi, dark),
+              : _buildCaptureView(s, isHi, dark),
         ),
       ),
     );
   }
 
-  Widget _buildCaptureView(bool isHi, bool dark) {
+  Widget _buildCaptureView(DashboardStrings s, bool isHi, bool dark) {
     return Padding(
       key: const ValueKey('capture_view'),
       padding: const EdgeInsets.all(20),
@@ -407,7 +413,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     color: dark ? Colors.white : AppColors.saffron700,
                   ),
                   label: Text(
-                    isHi ? 'कैमरा' : 'Camera',
+                    s.camera,
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       color: dark ? Colors.white : AppColors.saffron700,
@@ -422,7 +428,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     side: BorderSide(
-                      color: dark ? AppColors.ink700 : AppColors.saffron600,
+                       color: dark ? AppColors.ink700 : AppColors.saffron600,
                       width: 1.5,
                     ),
                     shape: RoundedRectangleBorder(
@@ -434,7 +440,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     color: dark ? Colors.white : AppColors.saffron700,
                   ),
                   label: Text(
-                    isHi ? 'गैलरी' : 'Gallery',
+                    s.gallery,
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       color: dark ? Colors.white : AppColors.saffron700,
@@ -502,8 +508,8 @@ class _CaptureScreenState extends State<CaptureScreen> {
                         const SizedBox(width: 8),
                         Text(
                           widget.existingProduct != null
-                              ? (isHi ? 'AI से लिस्टिंग पूरी करें' : 'Complete Listing with AI')
-                              : (isHi ? 'AI से जांचें और जोड़ें' : 'Analyze with AI & Save'),
+                              ? s.completeListing
+                              : s.analyzeAndSave,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,

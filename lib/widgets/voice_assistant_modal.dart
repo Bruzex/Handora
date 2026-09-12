@@ -104,7 +104,8 @@ class _VoiceAssistantModalState extends State<VoiceAssistantModal>
     setState(() => _state = _ViewState.processing);
 
     try {
-      final answer = await _service.stopRecordingAndAsk();
+      final app = context.read<AppState>();
+      final answer = await _service.stopRecordingAndAsk(language: app.language);
       if (!mounted) return;
       setState(() {
         _answer = answer;
@@ -112,7 +113,6 @@ class _VoiceAssistantModalState extends State<VoiceAssistantModal>
         _hindiSnackbarShown = false;
       });
       // Read the answer aloud right away — the button can replay or pause it.
-      final app = context.read<AppState>();
       await _service.speak(answer, language: app.language);
       _showHindiVoiceSnackbarIfNeeded();
     } on VoiceAssistantError catch (e) {
@@ -156,21 +156,24 @@ class _VoiceAssistantModalState extends State<VoiceAssistantModal>
     }
   }
 
-  /// Shows a bilingual snackbar if Hindi voice was needed but unavailable.
+  /// Shows a bilingual snackbar if regional voice was needed but unavailable.
   void _showHindiVoiceSnackbarIfNeeded() {
     if (!mounted) return;
-    if (!_service.hindiVoiceUnavailable) return;
+    if (!_service.regionalVoiceUnavailable) return;
     if (_hindiSnackbarShown) return;
     _hindiSnackbarShown = true;
 
+    final app = context.read<AppState>();
+    final langName = app.selectedLanguage.displayName;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text(
-          'Hindi voice not installed on this device. '
-          'Install Google Hindi TTS in system settings.\n'
-          'इस डिवाइस पर हिंदी आवाज़ उपलब्ध नहीं है। '
-          'सेटिंग्स में Google हिंदी TTS इंस्टॉल करें।',
-          style: TextStyle(fontSize: 13),
+        content: Text(
+          '$langName voice not installed on this device. '
+          'Install Google TTS voice data in system settings.\n'
+          'इस डिवाइस पर $langName आवाज़ उपलब्ध नहीं है। '
+          'सेटिंग्स में Google TTS इंस्टॉल करें।',
+          style: const TextStyle(fontSize: 13),
         ),
         backgroundColor: AppColors.amber600,
         behavior: SnackBarBehavior.floating,

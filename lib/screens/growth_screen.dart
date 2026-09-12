@@ -18,7 +18,15 @@ class GrowthScreen extends StatelessWidget {
     final data = context.watch<DataProvider>();
     final s = app.strings;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final peakDay = app.language == Language.hi ? kPeakDay.dayHi : kPeakDay.dayEn;
+    final peakDay = switch (app.language) {
+      Language.hi => kPeakDay.dayHi,
+      Language.mr => 'शनी',
+      Language.ta => 'சனி',
+      Language.te => 'శని',
+      Language.gu => 'શનિ',
+      Language.bn => 'শনি',
+      Language.en => kPeakDay.dayEn,
+    };
 
     // Use live order count from DB, keep revenue/chart as static analytics
     final liveOrderCount = data.orders.length.toString();

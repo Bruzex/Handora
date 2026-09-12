@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../l10n/strings.dart';
 
@@ -6,6 +7,8 @@ enum NavTab { home, catalog, growth, help }
 
 /// Handles UI-level state: active tab, language, theme, auth, overlay visibility.
 class AppState extends ChangeNotifier {
+  static const String _kLanguagePrefKey = 'handora_selected_language';
+
   Language _language = Language.en;
   NavTab _tab = NavTab.home;
   bool _isDark = false;
@@ -17,6 +20,26 @@ class AppState extends ChangeNotifier {
   String? _userDisplayName;
   String? _userEmail;
   String? _userPhone;
+
+  AppState() {
+    _loadPersistedLanguage();
+  }
+
+  Future<void> _loadPersistedLanguage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_kLanguagePrefKey);
+      if (saved != null) {
+        final matches = Language.values.where((l) => l.name == saved);
+        if (matches.isNotEmpty && matches.first != _language) {
+          _language = matches.first;
+          notifyListeners();
+        }
+      }
+    } catch (_) {
+      // Preferences may fail in some test environments
+    }
+  }
 
   bool get isAuthenticated => _isAuthenticated;
   String? get userDisplayName => _userDisplayName;
@@ -32,12 +55,13 @@ class AppState extends ChangeNotifier {
     }
   }
   Language get language => _language;
+  Language get selectedLanguage => _language;
   NavTab get tab => _tab;
   bool get isDark => _isDark;
   bool get showToast => _showToast;
   bool get showShipped => _showShipped;
 
-  DashboardStrings get strings => kStrings[_language]!;
+  DashboardStrings get strings => kStrings[_language] ?? kStrings[Language.en]!;
 
   /// Call after Supabase auth succeeds or on session restore.
   /// Reads display name, email, and phone from the current Supabase user.
@@ -91,6 +115,14 @@ class AppState extends ChangeNotifier {
     if (_language == lang) return;
     _language = lang;
     notifyListeners();
+    _persistLanguage(lang);
+  }
+
+  Future<void> _persistLanguage(Language lang) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kLanguagePrefKey, lang.name);
+    } catch (_) {}
   }
 
   void setTab(NavTab t) {

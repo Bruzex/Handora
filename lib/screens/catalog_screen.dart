@@ -97,12 +97,31 @@ class CatalogScreen extends StatelessWidget {
                         children: [
                           Text(
                             data.isSyncing
-                                ? (app.language == Language.hi
-                                    ? 'क्लाउड पर सिंक हो रहा है...'
-                                    : 'Syncing to cloud...')
-                                : (app.language == Language.hi
-                                    ? '${data.pendingSyncCount} प्रोडक्ट्स सिंक होना बाकी हैं। अभी सिंक करें।'
-                                    : '${data.pendingSyncCount} items pending cloud sync. Tap to sync now.'),
+                                ? switch (app.language) {
+                                    Language.hi => 'क्लाउड पर सिंक हो रहा है...',
+                                    Language.mr => 'क्लाउडवर सिंक होत आहे...',
+                                    Language.ta => 'கிளவுடில் ஒத்திசைக்கப்படுகிறது...',
+                                    Language.te => 'క్లౌడ్‌కు సింక్ అవుతోంది...',
+                                    Language.gu => 'ક્લાઉડ પર સિંક થઈ રહ્યું છે...',
+                                    Language.bn => 'ক্লাউডে সিঙ্ক হচ্ছে...',
+                                    Language.en => 'Syncing to cloud...',
+                                  }
+                                : switch (app.language) {
+                                    Language.hi =>
+                                      '${data.pendingSyncCount} प्रोडक्ट्स सिंक होना बाकी हैं। अभी सिंक करें।',
+                                    Language.mr =>
+                                      '${data.pendingSyncCount} उत्पादने सिंक होणे बाकी आहेत. आता सिंक करा.',
+                                    Language.ta =>
+                                      '${data.pendingSyncCount} பொருட்கள் ஒத்திசைக்க நிலுவையில் உள்ளன. இப்போது ஒத்திசைக்கவும்.',
+                                    Language.te =>
+                                      '${data.pendingSyncCount} అంశాలు సింక్ కావాల్సి ఉంది. ఇప్పుడే సింక్ చేయండి.',
+                                    Language.gu =>
+                                      '${data.pendingSyncCount} પ્રોડક્ટ્સ સિંક થવાની બાકી છે. હમણાં સિંક કરો.',
+                                    Language.bn =>
+                                      '${data.pendingSyncCount}টি পণ্য সিঙ্ক বাকি আছে। এখনই সিঙ্ক করুন।',
+                                    Language.en =>
+                                      '${data.pendingSyncCount} items pending cloud sync. Tap to sync now.',
+                                  },
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -113,9 +132,15 @@ class CatalogScreen extends StatelessWidget {
                           if (!data.isSyncing) ...[
                             const SizedBox(height: 2),
                             Text(
-                              app.language == Language.hi
-                                  ? 'इंटरनेट कनेक्ट होने पर अपने आप सिंक होगा'
-                                  : 'Will auto-sync when online',
+                              switch (app.language) {
+                                Language.hi => 'इंटरनेट कनेक्ट होने पर अपने आप सिंक होगा',
+                                Language.mr => 'इंटरनेट कनेक्ट झाल्यावर आपोआप सिंक होईल',
+                                Language.ta => 'இணையம் இணைக்கப்பட்டதும் தானாகவே ஒத்திசைக்கப்படும்',
+                                Language.te => 'ఇంటర్నెట్ కనెక్ట్ అయినప్పుడు ఆటో-సింక్ అవుతుంది',
+                                Language.gu => 'ઇન્ટરનેટ કનેક્ટ થતાં આપમેળે સિંક થશે',
+                                Language.bn => 'ইন্টারনেট চালু হলে স্বয়ংক্রিয়ভাবে সিঙ্ক হবে',
+                                Language.en => 'Will auto-sync when online',
+                              },
                               style: TextStyle(
                                 fontSize: 12,
                                 color: dark ? Colors.white60 : AppColors.ink500,

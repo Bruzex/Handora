@@ -52,14 +52,20 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
     if (!mounted) return;
     setState(() => _isUpdating = false);
 
-    final isHi = context.read<AppState>().language == Language.hi;
+    final lang = context.read<AppState>().language;
+    final statusLabel = WhatsAppService.formatStatusLabel(newStatus, lang);
+    final msg = switch (lang) {
+      Language.hi => 'ऑर्डर स्थिति अपडेट की गई: $statusLabel',
+      Language.mr => 'ऑर्डर स्थिती अपडेट केली: $statusLabel',
+      Language.ta => 'ஆர்டர் நிலை புதுப்பிக்கப்பட்டது: $statusLabel',
+      Language.te => 'ఆర్డర్ స్థితి నవీకరించబడింది: $statusLabel',
+      Language.gu => 'ઓર્ડર સ્થિતિ અપડેટ થઈ: $statusLabel',
+      Language.bn => 'অর্ডারের স্থিতি আপডেট করা হয়েছে: $statusLabel',
+      Language.en => 'Order status updated to $statusLabel',
+    };
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          isHi
-              ? 'ऑर्डर स्थिति अपडेट की गई: ${WhatsAppService.formatStatusLabel(newStatus, Language.hi)}'
-              : 'Order status updated to ${WhatsAppService.formatStatusLabel(newStatus, Language.en)}',
-        ),
+        content: Text(msg),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
       ),
@@ -185,18 +191,21 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
+    final s = app.strings;
     final isHi = app.language == Language.hi;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final surface = dark ? AppColors.ink800 : Colors.white;
     final textColor = dark ? Colors.white : AppColors.ink900;
-    final productName = isHi ? widget.order.productHi : widget.order.productEn;
+    final productName = (app.language != Language.en && widget.order.productHi.isNotEmpty)
+        ? widget.order.productHi
+        : widget.order.productEn;
 
     final statuses = [
-      {'key': 'new', 'label': isHi ? 'नया ऑर्डर' : 'New Order', 'icon': Icons.shopping_bag_outlined},
-      {'key': 'processing', 'label': isHi ? 'तैयारी में' : 'Processing', 'icon': Icons.handyman_outlined},
-      {'key': 'shipped', 'label': isHi ? 'भेज दिया' : 'Shipped', 'icon': Icons.local_shipping_outlined},
-      {'key': 'delivered', 'label': isHi ? 'डिलीवर हुआ' : 'Delivered', 'icon': Icons.check_circle_outline_rounded},
-      {'key': 'cancelled', 'label': isHi ? 'रद्द करें' : 'Cancelled', 'icon': Icons.cancel_outlined},
+      {'key': 'new', 'label': s.orderStatusNew, 'icon': Icons.shopping_bag_outlined},
+      {'key': 'processing', 'label': s.orderStatusProcessing, 'icon': Icons.handyman_outlined},
+      {'key': 'shipped', 'label': s.orderStatusShipped, 'icon': Icons.local_shipping_outlined},
+      {'key': 'delivered', 'label': s.orderStatusDelivered, 'icon': Icons.check_circle_outline_rounded},
+      {'key': 'cancelled', 'label': s.orderStatusCancelled, 'icon': Icons.cancel_outlined},
     ];
 
     return Padding(
@@ -406,7 +415,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
 
               // Status Selector Section
               Text(
-                isHi ? 'ऑर्डर की स्थिति बदलें' : 'Update Order Status',
+                s.updateOrderStatus,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
@@ -508,7 +517,7 @@ class _OrderDetailsModalState extends State<OrderDetailsModal> {
                   ),
                   icon: const Icon(Icons.chat_rounded, size: 22, color: Colors.white),
                   label: Text(
-                    isHi ? 'WhatsApp पर अपडेट भेजें' : 'Send WhatsApp Update',
+                    s.sendWhatsappUpdate,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,

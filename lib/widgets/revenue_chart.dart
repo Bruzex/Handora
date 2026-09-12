@@ -47,9 +47,15 @@ class RevenueChart extends StatelessWidget {
                 getTitlesWidget: (value, _) {
                   final i = value.toInt();
                   if (i < 0 || i >= kWeekEarnings.length) return const SizedBox.shrink();
-                  final day = language == Language.hi
-                      ? kWeekEarnings[i].dayHi
-                      : kWeekEarnings[i].dayEn;
+                  final day = switch (language) {
+                    Language.hi => kWeekEarnings[i].dayHi,
+                    Language.mr => const ['सोम', 'मंगळ', 'बुध', 'गुरु', 'शुक्र', 'शनी', 'रवि'][i],
+                    Language.ta => const ['திங்', 'செவ்', 'புதன்', 'வியா', 'வெள்', 'சனி', 'ஞாயி'][i],
+                    Language.te => const ['సోమ', 'మంగళ', 'బుధ', 'గురు', 'శుక్ర', 'శని', 'ఆది'][i],
+                    Language.gu => const ['સોમ', 'મંગળ', 'બુધ', 'ગુરુ', 'શુક્ર', 'શનિ', 'રવિ'][i],
+                    Language.bn => const ['সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি', 'রবি'][i],
+                    Language.en => kWeekEarnings[i].dayEn,
+                  };
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(day, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: axisColor)),

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../l10n/strings.dart';
 import '../providers/app_state.dart';
 import '../theme/palette.dart';
+import '../widgets/language_selector.dart';
 import 'email_login_screen.dart';
 import 'phone_login_screen.dart';
 
@@ -22,7 +23,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isHi = context.watch<AppState>().language == Language.hi;
+    final app = context.watch<AppState>();
+    final s = app.strings;
 
     return Scaffold(
       backgroundColor: AppColors.surfaceIvory,
@@ -44,26 +46,36 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 16),
+                  // Language switcher top right
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: LanguageSelector(
+                      currentLanguage: app.language,
+                      onLanguageChange: app.setLanguage,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
 
                   // App Logo (Icon.png from Desktop)
                   Center(
                     child: Image.asset(
                       'assets/images/Icon.png',
-                      height: 110,
+                      height: 100,
                       fit: BoxFit.contain,
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // Headline & Bilingual Subtitle
+                  // Headline & Subtitle
                   Center(
                     child: Column(
                       children: [
-                        const Text(
-                          'Welcome to Handora',
-                          style: TextStyle(
+                        Text(
+                          s.loginWelcome,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
                             color: AppColors.onSurface,
                             fontWeight: FontWeight.w700,
                             fontSize: 24,
@@ -72,12 +84,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
-                          'हैंडोरा में आपका स्वागत है',
-                          style: TextStyle(
+                        Text(
+                          s.loginSubtitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
                             color: AppColors.onSurfaceVariant,
                             fontWeight: FontWeight.w500,
-                            fontSize: 18,
+                            fontSize: 16,
                             fontFamily: 'Inter',
                           ),
                         ),
@@ -85,24 +98,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 32),
 
                   // Primary: Continue with Phone (Primary for rural artisans)
-                  _buildPrimaryPhoneButton(isHi),
+                  _buildPrimaryPhoneButton(s),
 
                   const SizedBox(height: 20),
 
-                  // OR / या Divider
-                  _buildOrDivider(),
+                  // OR Divider
+                  _buildOrDivider(app.language),
 
                   const SizedBox(height: 20),
 
                   // Continue with Email Button
                   _buildOutlinedSocialButton(
                     icon: Icons.mail_outline_rounded,
-                    label: isHi
-                        ? 'ईमेल से जारी रखें (Continue with Email)'
-                        : 'Continue with Email',
+                    label: s.continueEmail,
                     onTap: () {
                       Navigator.pushNamed(
                         context,
@@ -114,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 12),
 
                   // Continue with Google Button
-                  _buildGoogleSignInButton(),
+                  _buildGoogleSignInButton(s),
 
                   const Spacer(),
                   const SizedBox(height: 16),
@@ -128,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   /// Primary button: Continue with Phone -> opens PhoneLoginScreen
-  Widget _buildPrimaryPhoneButton(bool isHi) {
+  Widget _buildPrimaryPhoneButton(DashboardStrings s) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
@@ -166,9 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(width: 12),
             Text(
-              isHi
-                  ? 'फ़ोन नंबर से जारी रखें (Continue with Phone)'
-                  : 'Continue with Phone',
+              s.continuePhone,
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
@@ -182,7 +191,17 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildOrDivider() {
+  Widget _buildOrDivider(Language lang) {
+    final orLabel = switch (lang) {
+      Language.en => 'OR',
+      Language.hi => 'या',
+      Language.mr => 'किंवा',
+      Language.ta => 'அல்லது',
+      Language.te => 'లేదా',
+      Language.gu => 'અથવા',
+      Language.bn => 'অথবা',
+    };
+
     return Row(
       children: [
         const Expanded(
@@ -191,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'OR / या',
+            orLabel,
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -324,7 +343,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Widget _buildGoogleSignInButton() {
+  Widget _buildGoogleSignInButton(DashboardStrings s) {
     return OutlinedButton(
       onPressed: _isGoogleLoading ? null : _handleGoogleSignIn,
       style: OutlinedButton.styleFrom(
@@ -356,9 +375,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Continue with Google',
-                  style: TextStyle(
+                Text(
+                  s.continueGoogle,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,

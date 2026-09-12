@@ -7,6 +7,7 @@ import '../l10n/strings.dart';
 import '../providers/app_state.dart';
 import '../providers/data_provider.dart';
 import '../theme/palette.dart';
+import '../widgets/language_selector.dart';
 
 enum PhoneStep { phone, otp }
 
@@ -67,9 +68,19 @@ class PhoneLoginScreen extends StatefulWidget {
     this.startAtOtp = false,
   });
 
+  static Language _resolveLang({bool isHi = false, Language? language}) {
+    if (language != null) return language;
+    return isHi ? Language.hi : Language.en;
+  }
+
   /// Sanitizes errors encountered when sending OTP (Phone Step).
   /// NEVER returns OTP verification/token error messages.
-  static String sanitizeSendOtpError(dynamic error, {required bool isHi}) {
+  static String sanitizeSendOtpError(
+    dynamic error, {
+    bool isHi = false,
+    Language? language,
+  }) {
+    final lang = _resolveLang(isHi: isHi, language: language);
     final str = error.toString().toLowerCase();
 
     // Rate limiting
@@ -78,9 +89,15 @@ class PhoneLoginScreen extends StatefulWidget {
         str.contains('sms limit') ||
         str.contains('too many') ||
         str.contains('over_sms_send_rate_limit')) {
-      return isHi
-          ? 'बहुत अधिक प्रयास। कृपया थोड़ी देर बाद पुनः प्रयास करें।'
-          : 'Too many attempts. Please wait a few minutes and try again.';
+      return switch (lang) {
+        Language.hi => 'बहुत अधिक प्रयास। कृपया थोड़ी देर बाद पुनः प्रयास करें।',
+        Language.mr => 'खूप जास्त प्रयत्न. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा.',
+        Language.ta => 'அதிக முயற்சிகள். சில நிமிடங்கள் கழித்து மீண்டும் முயற்சிக்கவும்.',
+        Language.te => 'ఎక్కువ ప్రయత్నాలు. దయచేసి కొన్ని నిమిషాల తర్వాత మళ్లీ ప్రయత్నించండి.',
+        Language.gu => 'ઘણા બધા પ્રયાસો. કૃપા કરીને થોડીવાર પછી ફરી પ્રયાસ કરો.',
+        Language.bn => 'অতিরিক্ত প্রচেষ্টা। দয়া করে কিছুক্ষণ পরে আবার চেষ্টা করুন।',
+        Language.en => 'Too many attempts. Please wait a few minutes and try again.',
+      };
     }
 
     // Invalid phone number format from backend error
@@ -91,9 +108,15 @@ class PhoneLoginScreen extends StatefulWidget {
                 str.contains('invalid') ||
                 str.contains('bad') ||
                 str.contains('not_valid')))) {
-      return isHi
-          ? 'अमान्य मोबाइल नंबर प्रारूप। कृपया 10 अंकों का वैध नंबर दर्ज करें।'
-          : 'Invalid phone number format. Please enter a valid 10-digit number.';
+      return switch (lang) {
+        Language.hi => 'अमान्य मोबाइल नंबर प्रारूप। कृपया 10 अंकों का वैध नंबर दर्ज करें।',
+        Language.mr => 'अवैध मोबाईल नंबर स्वरूप. कृपया १० अंकी वैध नंबर टाका.',
+        Language.ta => 'தவறான மொபைல் எண் வடிவம். சரியான 10 இலக்க எண்ணை உள்ளிடவும்.',
+        Language.te => 'చెల్లని మొబైల్ నంబర్ ఫార్మాట్. దయచేసి సరైన 10 అంకెల నంబర్‌ను నమోదు చేయండి.',
+        Language.gu => 'અમાન્ય મોબાઇલ નંબર ફોર્મેટ. કૃપા કરીને ૧૦ અંકનો માન્ય નંબર દાખલ કરો.',
+        Language.bn => 'ভুল মোবাইল নম্বর ফরম্যাট। দয়া করে ১০ সংখ্যার সঠিক নম্বর লিখুন।',
+        Language.en => 'Invalid phone number format. Please enter a valid 10-digit number.',
+      };
     }
 
     // Network / connectivity issues
@@ -103,36 +126,65 @@ class PhoneLoginScreen extends StatefulWidget {
         str.contains('clientexception') ||
         str.contains('offline') ||
         str.contains('timeout')) {
-      return isHi
-          ? 'नेटवर्क त्रुटि। कृपया अपना इंटरनेट कनेक्शन जांचें।'
-          : 'Network error. Please check your internet connection.';
+      return switch (lang) {
+        Language.hi => 'नेटवर्क त्रुटि। कृपया अपना इंटरनेट कनेक्शन जांचें।',
+        Language.mr => 'नेटवर्क त्रुटी. कृपया तुमचे इंटरनेट कनेक्शन तपासा.',
+        Language.ta => 'பிணையப் பிழை. உங்கள் இணைய இணைப்பைச் சரிபார்க்கவும்.',
+        Language.te => 'నెట్‌వర్క్ లోపం. దయచేసి మీ ఇంటర్నెట్ కనెక్షన్‌ని తనిఖీ చేయండి.',
+        Language.gu => 'નેટવર્ક ભૂલ. કૃપા કરીને તમારું ઇન્ટરનેટ કનેક્શન તપાસો.',
+        Language.bn => 'নেটওয়ার্ক ত্রুটি। আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন।',
+        Language.en => 'Network error. Please check your internet connection.',
+      };
     }
 
     // Fallback generic send error (Never mentions OTP code or token)
-    return isHi
-        ? 'ओटीपी भेजने में विफल। कृपया पुनः प्रयास करें।'
-        : 'Failed to send OTP. Please check the number and try again.';
+    return switch (lang) {
+      Language.hi => 'ओटीपी भेजने में विफल। कृपया पुनः प्रयास करें।',
+      Language.mr => 'ओटीपी पाठवण्यात अपयशी. कृपया पुन्हा प्रयत्न करा.',
+      Language.ta => 'OTP அனுப்புவதில் தோல்வி. மீண்டும் முயற்சிக்கவும்.',
+      Language.te => 'OTP పంపడంలో విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.',
+      Language.gu => 'ઓટીપી મોકલવામાં નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.',
+      Language.bn => 'ওটিপি পাঠাতে ব্যর্থ হয়েছে। দয়া করে আবার চেষ্টা করুন।',
+      Language.en => 'Failed to send OTP. Please check the number and try again.',
+    };
   }
 
   /// Sanitizes errors encountered when verifying OTP (OTP Step).
   /// Strictly dedicated to OTP verification and token mismatch.
-  static String sanitizeVerifyOtpError(dynamic error, {required bool isHi}) {
+  static String sanitizeVerifyOtpError(
+    dynamic error, {
+    bool isHi = false,
+    Language? language,
+  }) {
+    final lang = _resolveLang(isHi: isHi, language: language);
     final str = error.toString().toLowerCase();
 
     // Rate limiting
     if (str.contains('429') ||
         str.contains('rate limit') ||
         str.contains('too many')) {
-      return isHi
-          ? 'बहुत अधिक प्रयास। कृपया थोड़ी देर बाद पुनः प्रयास करें।'
-          : 'Too many attempts. Please wait a few minutes and try again.';
+      return switch (lang) {
+        Language.hi => 'बहुत अधिक प्रयास। कृपया थोड़ी देर बाद पुनः प्रयास करें।',
+        Language.mr => 'खूप जास्त प्रयत्न. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा.',
+        Language.ta => 'அதிக முயற்சிகள். சில நிமிடங்கள் கழித்து மீண்டும் முயற்சிக்கவும்.',
+        Language.te => 'ఎక్కువ ప్రయత్నాలు. దయచేసి కొన్ని నిమిషాల తర్వాత మళ్లీ ప్రయత్నించండి.',
+        Language.gu => 'ઘણા બધા પ્રયાસો. કૃપા કરીને થોડીવાર પછી ફરી પ્રયાસ કરો.',
+        Language.bn => 'অতিরিক্ত প্রচেষ্টা। দয়া করে কিছুক্ষণ পরে আবার চেষ্টা করুন।',
+        Language.en => 'Too many attempts. Please wait a few minutes and try again.',
+      };
     }
 
     // Expired OTP
     if (str.contains('expired')) {
-      return isHi
-          ? 'ओटीपी की समय सीमा समाप्त हो गई है। कृपया नया ओटीपी भेजें।'
-          : 'OTP has expired. Please tap resend to get a new code.';
+      return switch (lang) {
+        Language.hi => 'ओटीपी की समय सीमा समाप्त हो गई है। कृपया नया ओटीपी भेजें।',
+        Language.mr => 'ओटीपीची मुदत संपली आहे. कृपया नवीन ओटीपी पाठवा.',
+        Language.ta => 'OTP காலாவதியானது. புதிய குறியீட்டைப் பெற மீண்டும் அனுப்புக என்பதை அழுத்தவும்.',
+        Language.te => 'OTP గడువు ముగిసింది. కొత్త కోడ్ కోసం మళ్లీ పంపు నొక్కండి.',
+        Language.gu => 'ઓટીપીની સમયસીમા સમાપ્ત થઈ ગઈ છે. કૃપા કરીને ફરીથી મોકલો.',
+        Language.bn => 'ওটিপির মেয়াদ শেষ হয়ে গেছে। নতুন ওটিপি পাঠাতে পুনরায় অনুরোধ করুন।',
+        Language.en => 'OTP has expired. Please tap resend to get a new code.',
+      };
     }
 
     // Invalid / wrong OTP token or code mismatch
@@ -143,9 +195,15 @@ class PhoneLoginScreen extends StatefulWidget {
         str.contains('mismatch') ||
         str.contains('incorrect') ||
         str.contains('wrong')) {
-      return isHi
-          ? 'अमान्य या समाप्त ओटीपी कोड। कृपया सही 6-अंकों का कोड दर्ज करें।'
-          : 'Invalid or expired OTP code. Please enter the correct 6-digit code.';
+      return switch (lang) {
+        Language.hi => 'अमान्य या समाप्त ओटीपी कोड। कृपया सही 6-अंकों का कोड दर्ज करें।',
+        Language.mr => 'अवैध किंवा कालबाह्य ओटीपी कोड. कृपया योग्य ६ अंकी कोड टाका.',
+        Language.ta => 'தவறான அல்லது காலாவதியான OTP குறியீடு. சரியான 6 இலக்க குறியீட்டை உள்ளிடவும்.',
+        Language.te => 'చెల్లని లేదా గడువు ముగిసిన OTP కోడ్. దయచేసి సరైన 6 అంకెల కోడ్‌ను నమోదు చేయండి.',
+        Language.gu => 'અમાન્ય અથવા સમાપ્ત થયેલ ઓટીપી. કૃપા કરીને સાચો ૬-અંકનો કોડ દાખલ કરો.',
+        Language.bn => 'ভুল বা মেয়াদোত্তীর্ণ ওটিপি কোড। সঠিক ৬-সংখ্যার কোড লিখুন।',
+        Language.en => 'Invalid or expired OTP code. Please enter the correct 6-digit code.',
+      };
     }
 
     // Network / connectivity issues
@@ -155,19 +213,36 @@ class PhoneLoginScreen extends StatefulWidget {
         str.contains('clientexception') ||
         str.contains('offline') ||
         str.contains('timeout')) {
-      return isHi
-          ? 'नेटवर्क त्रुटि। कृपया अपना इंटरनेट कनेक्शन जांचें।'
-          : 'Network error. Please check your internet connection.';
+      return switch (lang) {
+        Language.hi => 'नेटवर्क त्रुटि। कृपया अपना इंटरनेट कनेक्शन जांचें।',
+        Language.mr => 'नेटवर्क त्रुटी. कृपया तुमचे इंटरनेट कनेक्शन तपासा.',
+        Language.ta => 'பிணையப் பிழை. உங்கள் இணைய இணைப்பைச் சரிபார்க்கவும்.',
+        Language.te => 'నెట్‌వర్క్ లోపం. దయచేసి మీ ఇంటర్నెట్ కనెక్షన్‌ని తనిఖీ చేయండి.',
+        Language.gu => 'નેટવર્ક ભૂલ. કૃપા કરીને તમારું ઇન્ટરનેટ કનેક્શન તપાસો.',
+        Language.bn => 'নেটওয়ার্ক ত্রুটি। আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন।',
+        Language.en => 'Network error. Please check your internet connection.',
+      };
     }
 
     // Fallback generic verification error
-    return isHi
-        ? 'सत्यापन विफल रहा। कृपया सही कोड दर्ज करें या पुनः प्रयास करें।'
-        : 'Verification failed. Please check the code and try again.';
+    return switch (lang) {
+      Language.hi => 'सत्यापन विफल रहा। कृपया सही कोड दर्ज करें या पुनः प्रयास करें।',
+      Language.mr => 'पडताळणी अयशस्वी. कृपया योग्य कोड टाका किंवा पुन्हा प्रयत्न करा.',
+      Language.ta => 'சரிபார்ப்பு தோல்வியடைந்தது. சரியான குறியீட்டை உள்ளிடவும் அல்லது மீண்டும் முயற்சிக்கவும்.',
+      Language.te => 'ధృవీకరణ విఫలమైంది. దయచేసి సరైన కోడ్‌ను నమోదు చేయండి లేదా మళ్లీ ప్రయత్నించండి.',
+      Language.gu => 'ચકાસણી નિષ્ફળ રહી. કૃપા કરીને સાચો કોડ દાખલ કરો અથવા ફરી પ્રયાસ કરો.',
+      Language.bn => 'যাচাইকরণ ব্যর্থ হয়েছে। সঠিক কোড দিন অথবা আবার চেষ্টা করুন।',
+      Language.en => 'Verification failed. Please check the code and try again.',
+    };
   }
 
   /// Sanitizes errors encountered when resending OTP (OTP Step).
-  static String sanitizeResendOtpError(dynamic error, {required bool isHi}) {
+  static String sanitizeResendOtpError(
+    dynamic error, {
+    bool isHi = false,
+    Language? language,
+  }) {
+    final lang = _resolveLang(isHi: isHi, language: language);
     final str = error.toString().toLowerCase();
 
     if (str.contains('429') ||
@@ -175,9 +250,15 @@ class PhoneLoginScreen extends StatefulWidget {
         str.contains('sms limit') ||
         str.contains('too many') ||
         str.contains('over_sms_send_rate_limit')) {
-      return isHi
-          ? 'बहुत अधिक प्रयास। कृपया थोड़ी देर बाद पुनः प्रयास करें।'
-          : 'Too many attempts. Please wait a few minutes and try again.';
+      return switch (lang) {
+        Language.hi => 'बहुत अधिक प्रयास। कृपया थोड़ी देर बाद पुनः प्रयास करें।',
+        Language.mr => 'खूप जास्त प्रयत्न. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा.',
+        Language.ta => 'அதிக முயற்சிகள். சில நிமிடங்கள் கழித்து மீண்டும் முயற்சிக்கவும்.',
+        Language.te => 'ఎక్కువ ప్రయత్నాలు. దయచేసి కొన్ని నిమిషాల తర్వాత మళ్లీ ప్రయత్నించండి.',
+        Language.gu => 'ઘણા બધા પ્રયાસો. કૃપા કરીને થોડીવાર પછી ફરી પ્રયાસ કરો.',
+        Language.bn => 'অতিরিক্ত প্রচেষ্টা। দয়া করে কিছুক্ষণ পরে আবার চেষ্টা করুন।',
+        Language.en => 'Too many attempts. Please wait a few minutes and try again.',
+      };
     }
 
     if (str.contains('network') ||
@@ -186,14 +267,26 @@ class PhoneLoginScreen extends StatefulWidget {
         str.contains('clientexception') ||
         str.contains('offline') ||
         str.contains('timeout')) {
-      return isHi
-          ? 'नेटवर्क त्रुटि। कृपया अपना इंटरनेट कनेक्शन जांचें।'
-          : 'Network error. Please check your internet connection.';
+      return switch (lang) {
+        Language.hi => 'नेटवर्क त्रुटि। कृपया अपना इंटरनेट कनेक्शन जांचें।',
+        Language.mr => 'नेटवर्क त्रुटी. कृपया तुमचे इंटरनेट कनेक्शन तपासा.',
+        Language.ta => 'பிணையப் பிழை. உங்கள் இணைய இணைப்பைச் சரிபார்க்கவும்.',
+        Language.te => 'నెట్‌వర్క్ లోపం. దయచేసి మీ ఇంటర్నెట్ కనెక్షన్‌ని తనిఖీ చేయండి.',
+        Language.gu => 'નેટવર્ક ભૂલ. કૃપા કરીને તમારું ઇન્ટરનેટ કનેક્શન તપાસો.',
+        Language.bn => 'নেটওয়ার্ক ত্রুটি। আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন।',
+        Language.en => 'Network error. Please check your internet connection.',
+      };
     }
 
-    return isHi
-        ? 'ओटीपी पुनः भेजने में विफल। कृपया पुनः प्रयास करें।'
-        : 'Failed to resend OTP. Please try again.';
+    return switch (lang) {
+      Language.hi => 'ओटीपी पुनः भेजने में विफल। कृपया पुनः प्रयास करें।',
+      Language.mr => 'ओटीपी पुन्हा पाठवण्यात अयशस्वी. कृपया पुन्हा प्रयत्न करा.',
+      Language.ta => 'OTP மீண்டும் அனுப்புவதில் தோல்வி. மீண்டும் முயற்சிக்கவும்.',
+      Language.te => 'OTP మళ్లీ పంపడంలో విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.',
+      Language.gu => 'ઓટીપી ફરી મોકલવામાં નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.',
+      Language.bn => 'ওটিপি পুনরায় পাঠাতে ব্যর্থ হয়েছে। দয়া করে আবার চেষ্টা করুন।',
+      Language.en => 'Failed to resend OTP. Please try again.',
+    };
   }
 
   /// Indian mobile number pattern: exactly 10 digits starting with digits 6 through 9 (^[6-9]\d{9}$)
@@ -241,22 +334,39 @@ class PhoneLoginScreen extends StatefulWidget {
   /// Validates an Indian mobile number.
   /// Calls [normalizePhoneNumber] at the very beginning before performing any length or pattern check.
   /// Returns null if valid, or a localized error message if invalid.
-  static String? validatePhoneNumber(String? phone, {required bool isHi}) {
+  static String? validatePhoneNumber(
+    String? phone, {
+    bool isHi = false,
+    Language? language,
+  }) {
+    final lang = _resolveLang(isHi: isHi, language: language);
     // 1. Call normalizePhoneNumber at the very beginning
     final normalized = normalizePhoneNumber(phone);
 
     // 2. Length check evaluated strictly against the clean, normalized 10-digit string
     if (normalized.length != 10) {
-      return isHi
-          ? 'कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें'
-          : 'Please enter a valid 10-digit mobile number';
+      return switch (lang) {
+        Language.hi => 'कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें',
+        Language.mr => 'कृपया १० अंकी वैध मोबाईल नंबर टाका',
+        Language.ta => 'சரியான 10 இலக்க மொபைல் எண்ணை உள்ளிடவும்',
+        Language.te => 'దయచేసి సరైన 10 అంకెల మొబైల్ నంబర్‌ను నమోదు చేయండి',
+        Language.gu => 'કૃપા કરીને ૧૦ અંકનો માન્ય મોબાઇલ નંબર દાખલ કરો',
+        Language.bn => 'দয়া করে ১০ সংখ্যার সঠিক মোবাইল নম্বর লিখুন',
+        Language.en => 'Please enter a valid 10-digit mobile number',
+      };
     }
 
     // 3. Pattern check evaluated strictly against the clean, normalized string (^[6-9]\d{9}$)
     if (!indianMobileRegex.hasMatch(normalized)) {
-      return isHi
-          ? 'कृपया 6-9 से शुरू होने वाला 10 अंकों का वैध मोबाइल नंबर दर्ज करें'
-          : 'Please enter a valid 10-digit mobile number starting with 6-9';
+      return switch (lang) {
+        Language.hi => 'कृपया 6-9 से शुरू होने वाला 10 अंकों का वैध मोबाइल नंबर दर्ज करें',
+        Language.mr => 'कृपया ६-९ ने सुरू होणारा १० अंकी वैध मोबाईल नंबर टाका',
+        Language.ta => '6-9 இல் தொடங்கும் 10 இலக்க மொபைல் எண்ணை உள்ளிடவும்',
+        Language.te => 'దయచేసి 6-9 తో ప్రారంభమయ్యే సరైన 10 అంకెల మొబైల్ నంబర్‌ను నమోదు చేయండి',
+        Language.gu => 'કૃપા કરીને ૬-૯ થી શરૂ થતો ૧૦ અંકનો માન્ય મોબાઇલ નંબર દાખલ કરો',
+        Language.bn => 'দয়া করে ৬-৯ দিয়ে শুরু হওয়া ১০ সংখ্যার সঠিক মোবাইল নম্বর লিখুন',
+        Language.en => 'Please enter a valid 10-digit mobile number starting with 6-9',
+      };
     }
 
     return null;
@@ -396,10 +506,10 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
   /// Sends OTP via Supabase Auth + Twilio SMS
   Future<void> _handleSendOtp() async {
     final rawNumber = _phoneController.text.trim();
-    final isHi = context.read<AppState>().language == Language.hi;
+    final lang = context.read<AppState>().language;
 
     final validationError =
-        PhoneLoginScreen.validatePhoneNumber(rawNumber, isHi: isHi);
+        PhoneLoginScreen.validatePhoneNumber(rawNumber, language: lang);
     if (validationError != null) {
       setState(() {
         _phoneErrorMessage = validationError;
@@ -453,7 +563,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
         _isSendingOtp = false;
         _otpErrorMessage = null;
         _phoneErrorMessage =
-            PhoneLoginScreen.sanitizeSendOtpError(e, isHi: isHi);
+            PhoneLoginScreen.sanitizeSendOtpError(e, language: lang);
       });
     }
   }
@@ -463,7 +573,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
     if (_secondsRemaining > 0) return;
 
     final rawNumber = _phoneController.text.trim();
-    final isHi = context.read<AppState>().language == Language.hi;
+    final lang = context.read<AppState>().language;
     final normalized = PhoneLoginScreen.normalizePhoneNumber(rawNumber);
     final e164Phone = '+91$normalized';
 
@@ -476,13 +586,19 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
 
       if (!mounted) return;
 
+      final resentMsg = switch (lang) {
+        Language.hi => 'ओटीपी पुनः भेजा गया: $e164Phone',
+        Language.mr => 'येथे ओटीपी पुन्हा पाठवला: $e164Phone',
+        Language.ta => 'OTP மீண்டும் அனுப்பப்பட்டது: $e164Phone',
+        Language.te => 'OTP మళ్లీ పంపబడింది: $e164Phone',
+        Language.gu => 'ઓટીપી ફરી મોકલાયો: $e164Phone',
+        Language.bn => 'ওটিপি পুনরায় পাঠানো হয়েছে: $e164Phone',
+        Language.en => 'OTP resent to $e164Phone',
+      };
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            isHi
-                ? 'ओटीपी पुनः भेजा गया: $e164Phone'
-                : 'OTP resent to $e164Phone',
-          ),
+          content: Text(resentMsg),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ),
@@ -491,7 +607,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
       if (!mounted) return;
       setState(() {
         _otpErrorMessage =
-            PhoneLoginScreen.sanitizeResendOtpError(e, isHi: isHi);
+            PhoneLoginScreen.sanitizeResendOtpError(e, language: lang);
       });
     }
   }
@@ -540,13 +656,19 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
     if (_isVerifyingOtp) return;
 
     final otp = _otpControllers.map((c) => c.text.trim()).join();
-    final isHi = context.read<AppState>().language == Language.hi;
+    final lang = context.read<AppState>().language;
 
     if (otp.length < 6) {
       setState(() {
-        _otpErrorMessage = isHi
-            ? 'कृपया पूरा 6-अंकों का ओटीपी दर्ज करें'
-            : 'Please enter complete 6-digit OTP';
+        _otpErrorMessage = switch (lang) {
+          Language.hi => 'कृपया पूरा 6-अंकों का ओटीपी दर्ज करें',
+          Language.mr => 'कृपया संपूर्ण ६ अंकी ओटीपी टाका',
+          Language.ta => 'முழுமையான 6 இலக்க OTP ஐ உள்ளிடவும்',
+          Language.te => 'దయచేసి పూర్తి 6 అంకెల OTP నమోదు చేయండి',
+          Language.gu => 'કૃપા કરીને પૂરો ૬-અંકનો ઓટીપી દાખલ કરો',
+          Language.bn => 'দয়া করে সম্পূর্ণ ৬-সংখ্যার ওটিপি লিখুন',
+          Language.en => 'Please enter complete 6-digit OTP',
+        };
       });
       return;
     }
@@ -620,7 +742,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
       setState(() {
         _isVerifyingOtp = false;
         _otpErrorMessage =
-            PhoneLoginScreen.sanitizeVerifyOtpError(e, isHi: isHi);
+            PhoneLoginScreen.sanitizeVerifyOtpError(e, language: lang);
       });
     }
   }
@@ -637,7 +759,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
-    final isHi = app.language == Language.hi;
+    final s = app.strings;
 
     return PopScope(
       canPop: _step == PhoneStep.phone || widget.startAtOtp,
@@ -664,50 +786,58 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
             },
             tooltip: 'Back',
           ),
-        title: Text(
-          _step == PhoneStep.phone
-              ? (isHi ? 'फ़ोन लॉगिन' : 'Phone Login')
-              : (isHi ? 'ओटीपी सत्यापन' : 'OTP Verification'),
-          style: const TextStyle(
-            color: AppColors.primary,
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Inter',
+          title: Text(
+            _step == PhoneStep.phone ? s.phoneLoginTitle : s.otpTitle,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Inter',
+            ),
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: LanguageSelector(
+                compact: true,
+                currentLanguage: app.language,
+                onLanguageChange: app.setLanguage,
+              ),
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.marginMobile,
+              vertical: AppSpacing.sm,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height -
+                    MediaQuery.of(context).padding.top -
+                    MediaQuery.of(context).padding.bottom -
+                    kToolbarHeight -
+                    16,
+              ),
+              child: IntrinsicHeight(
+                child: _step == PhoneStep.phone
+                    ? _buildEnterPhoneStep(app, s)
+                    : _buildEnterOtpStep(app, s),
+              ),
+            ),
           ),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.marginMobile,
-            vertical: AppSpacing.sm,
-          ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height -
-                  MediaQuery.of(context).padding.top -
-                  MediaQuery.of(context).padding.bottom -
-                  kToolbarHeight -
-                  16,
-            ),
-            child: IntrinsicHeight(
-              child: _step == PhoneStep.phone
-                  ? _buildEnterPhoneStep(isHi)
-                  : _buildEnterOtpStep(isHi),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
+    );
+  }
 
   // ═════════════════════════════════════════════════════════════════════════
   // SCREEN A: ENTER PHONE
   // ═════════════════════════════════════════════════════════════════════════
 
-  Widget _buildEnterPhoneStep(bool isHi) {
+  Widget _buildEnterPhoneStep(AppState app, DashboardStrings s) {
     final hasText = _phoneController.text.isNotEmpty;
 
     return Column(
@@ -741,12 +871,12 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
 
         const SizedBox(height: 20),
 
-        // Title & Bilingual Subtitle
+        // Title & Multilingual Subtitle
         Center(
           child: Column(
             children: [
               Text(
-                isHi ? 'मोबाइल नंबर दर्ज करें' : 'Enter Mobile Number',
+                s.enterMobile,
                 style: const TextStyle(
                   color: AppColors.onSurface,
                   fontWeight: FontWeight.w700,
@@ -757,9 +887,15 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
               ),
               const SizedBox(height: 6),
               Text(
-                isHi
-                    ? 'हम आपके नंबर पर एक 6-अंकों का ओटीपी भेजेंगे'
-                    : "We'll send a 6-digit OTP verification code",
+                switch (app.language) {
+                  Language.hi => 'हम आपके नंबर पर एक 6-अंकों का ओटीपी भेजेंगे',
+                  Language.mr => 'आम्ही तुमच्या नंबरवर ६ अंकी ओटीपी पाठवू',
+                  Language.ta => 'உங்கள் எண்ணிற்கு 6 இலக்க OTP அனுப்புவோம்',
+                  Language.te => 'మీ నంబర్‌కు 6 అంకెల OTP ని పంపుతాము',
+                  Language.gu => 'અમે તમારા નંબર પર ૬-અંકનો ઓટીપી મોકલીશું',
+                  Language.bn => 'আমরা আপনার নম্বরে একটি ৬-সংখ্যার ওটিপি পাঠাব',
+                  Language.en => "We'll send a 6-digit OTP verification code",
+                },
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: AppColors.onSurfaceVariant,
@@ -776,7 +912,15 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
 
         // Input Label
         Text(
-          isHi ? 'मोबाइल नंबर (Mobile Number)' : 'Mobile Number',
+          switch (app.language) {
+            Language.hi => 'मोबाइल नंबर',
+            Language.mr => 'मोबाईल नंबर',
+            Language.ta => 'கைபேசி எண்',
+            Language.te => 'మొబైల్ నంబర్',
+            Language.gu => 'મોબાઇલ નંબર',
+            Language.bn => 'মোবাইল নম্বর',
+            Language.en => 'Mobile Number',
+          },
           style: const TextStyle(
             color: AppColors.onSurfaceVariant,
             fontWeight: FontWeight.w600,
@@ -845,7 +989,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
                     letterSpacing: 1.0,
                   ),
                   decoration: InputDecoration(
-                    hintText: isHi ? '10-अंकों का नंबर' : '10-digit number',
+                    hintText: s.mobileNumberHint,
                     hintStyle: const TextStyle(
                       color: Color(0xFF9E8E84),
                       fontSize: 16,
@@ -936,7 +1080,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        isHi ? 'ओटीपी भेजें (Send OTP)' : 'Send OTP',
+                        s.sendOtp,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -960,7 +1104,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
   // SCREEN B: ENTER OTP (6 DIGITS)
   // ═════════════════════════════════════════════════════════════════════════
 
-  Widget _buildEnterOtpStep(bool isHi) {
+  Widget _buildEnterOtpStep(AppState app, DashboardStrings s) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1014,7 +1158,15 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
               const SizedBox(height: 20),
 
               Text(
-                isHi ? 'ओटीपी भेजा गया:' : 'OTP sent to',
+                switch (app.language) {
+                  Language.hi => 'ओटीपी भेजा गया:',
+                  Language.mr => 'येथे ओटीपी पाठवला:',
+                  Language.ta => 'OTP அனுப்பப்பட்டது:',
+                  Language.te => 'OTP పంపబడింది:',
+                  Language.gu => 'ઓટીપી મોકલાયો:',
+                  Language.bn => 'ওটিপি পাঠানো হয়েছে:',
+                  Language.en => 'OTP sent to',
+                },
                 style: const TextStyle(
                   color: AppColors.onSurfaceVariant,
                   fontWeight: FontWeight.w500,
@@ -1055,7 +1207,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        isHi ? 'नंबर बदलें (Change Number)' : 'Change Number',
+                        s.changeNumber,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -1103,7 +1255,15 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
           child: Column(
             children: [
               Text(
-                isHi ? 'ओटीपी नहीं मिला?' : "Didn't receive code?",
+                switch (app.language) {
+                  Language.hi => 'ओटीपी नहीं मिला?',
+                  Language.mr => 'ओटीपी मिळाला नाही?',
+                  Language.ta => 'OTP வரவில்லையா?',
+                  Language.te => 'OTP రాలేదా?',
+                  Language.gu => 'ઓટીપી નથી મળ્યો?',
+                  Language.bn => 'ওটিপি পাননি?',
+                  Language.en => "Didn't receive code?",
+                },
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -1116,10 +1276,16 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
                 onTap: _secondsRemaining == 0 ? _handleResendOtp : null,
                 child: Text(
                   _secondsRemaining > 0
-                      ? (isHi
-                          ? '$_secondsRemaining सेकंड में पुनः भेजें'
-                          : 'Resend in ${_secondsRemaining}s')
-                      : (isHi ? 'अभी पुनः भेजें (Resend OTP)' : 'Resend OTP Now'),
+                      ? (switch (app.language) {
+                          Language.hi => '$_secondsRemaining सेकंड में पुनः भेजें',
+                          Language.mr => '$_secondsRemaining सेकंदात पुन्हा पाठवा',
+                          Language.ta => '$_secondsRemaining வினாடிகளில் மீண்டும் அனுப்பவும்',
+                          Language.te => '$_secondsRemaining సెకన్లలో మళ్లీ పంపండి',
+                          Language.gu => '$_secondsRemaining સેકન્ડમાં ફરી મોકલો',
+                          Language.bn => '$_secondsRemaining সেকেন্ডে পুনরায় পাঠান',
+                          Language.en => 'Resend in ${_secondsRemaining}s',
+                        })
+                      : s.resendOtp,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -1175,9 +1341,7 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        isHi
-                            ? 'सत्यापित करें और लॉगिन करें'
-                            : 'Verify & Login',
+                        s.verifyLogin,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,

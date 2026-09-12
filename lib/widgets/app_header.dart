@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../l10n/strings.dart';
 import '../theme/palette.dart';
+import 'language_selector.dart';
 
 class AppHeader extends StatelessWidget {
   final Language language;
@@ -42,56 +42,13 @@ class AppHeader extends StatelessWidget {
             ],
           )),
 
-          // EN / HI toggle pill
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: AppColors.saffron50,
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(color: AppColors.saffron600, width: 2),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _LangPill('EN', language == Language.en, () => onLanguageChange(Language.en)),
-                const SizedBox(width: 4),
-                _LangPill('हिं', language == Language.hi, () => onLanguageChange(Language.hi), deva: true),
-              ],
-            ),
+          // Language Selector
+          LanguageSelector(
+            currentLanguage: language,
+            onLanguageChange: onLanguageChange,
+            compact: true,
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _LangPill extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  final bool deva;
-
-  const _LangPill(this.label, this.active, this.onTap, {this.deva = false});
-
-  @override
-  Widget build(BuildContext context) {
-    var style = TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w700,
-      color: active ? Colors.white : AppColors.saffron700,
-    );
-    if (deva) style = GoogleFonts.notoSansDevanagari(textStyle: style);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 52),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? AppColors.saffron600 : Colors.transparent,
-          borderRadius: BorderRadius.circular(100),
-        ),
-        child: Center(child: Text(label, style: style)),
       ),
     );
   }

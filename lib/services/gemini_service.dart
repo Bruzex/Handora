@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import '../l10n/strings.dart';
 import '../models/product.dart';
 import 'database_helper.dart';
 import 'supabase_service.dart';
@@ -67,33 +68,52 @@ class GeminiService {
   }
 
   /// Formats Gemini API errors into clean, bilingual, user-friendly messages for SnackBars.
-  static String formatGeminiError(dynamic error, {bool? isHi}) {
+  static String formatGeminiError(dynamic error, {bool? isHi, Language? language}) {
+    final lang = language ?? (isHi == true ? Language.hi : (isHi == false ? Language.en : null));
     final errStr = error.toString();
     if (errStr.contains('429') ||
         errStr.toLowerCase().contains('quota exceeded') ||
         errStr.contains('RESOURCE_EXHAUSTED')) {
-      if (isHi == true) {
-        return 'सर्वर अभी व्यस्त है। कृपया 1 मिनट बाद पुनः प्रयास करें।';
-      } else if (isHi == false) {
-        return 'Server is currently busy. Please wait a minute and try again.';
+      if (lang != null) {
+        return switch (lang) {
+          Language.hi => 'सर्वर अभी व्यस्त है। कृपया 1 मिनट बाद पुनः प्रयास करें।',
+          Language.mr => 'सर्व्हर सध्या व्यस्त आहे. कृपया १ मिनिटानंतर पुन्हा प्रयत्न करा.',
+          Language.ta => 'சர்வர் தற்போது பிஸியாக உள்ளது. 1 நிமிடம் கழித்து முயற்சிக்கவும்.',
+          Language.te => 'సర్వర్ ప్రస్తుతం బిజీగా ఉంది. దయచేసి 1 నిమిషం తర్వాత మళ్లీ ప్రయత్నించండి.',
+          Language.gu => 'સર્વર હાલમાં વ્યસ્ત છે. કૃપા કરીને ૧ મિનિટ પછી ફરી પ્રયાસ કરો.',
+          Language.bn => 'সার্ভার বর্তমানে ব্যস্ত। দয়া করে ১ মিনিট পরে আবার চেষ্টা করুন।',
+          Language.en => 'Server is currently busy. Please wait a minute and try again.',
+        };
       }
       return 'Server is currently busy. Please wait a minute and try again. / सर्वर अभी व्यस्त है। कृपया 1 मिनट बाद पुनः प्रयास करें।';
     }
 
     if (errStr.toLowerCase().contains('api_key') ||
         errStr.contains('GEMINI_API_KEY')) {
-      if (isHi == true) {
-        return 'AI सेवा कॉन्फ़िगरेशन समस्या। कृपया पुनः प्रयास करें।';
-      } else if (isHi == false) {
-        return 'AI service configuration issue. Please check API key.';
+      if (lang != null) {
+        return switch (lang) {
+          Language.hi => 'AI सेवा कॉन्फ़िगरेशन समस्या। कृपया पुनः प्रयास करें।',
+          Language.mr => 'AI सेवा कॉन्फिगरेशन समस्या. कृपया पुन्हा प्रयत्न करा.',
+          Language.ta => 'AI சேவை கட்டமைப்பு சிக்கல். மீண்டும் முயற்சிக்கவும்.',
+          Language.te => 'AI సేవ కాన్ఫిగరేషన్ సమస్య. దయచేసి మళ్లీ ప్రయత్నించండి.',
+          Language.gu => 'AI સેવા કન્ફિગરેશન સમસ્યા. કૃપા કરીને ફરી પ્રયાસ કરો.',
+          Language.bn => 'AI পরিষেবা কনফিগারেশন সমস্যা। দয়া করে আবার চেষ্টা করুন।',
+          Language.en => 'AI service configuration issue. Please check API key.',
+        };
       }
       return 'AI service configuration issue. / AI सेवा कॉन्फ़िगरेशन समस्या।';
     }
 
-    if (isHi == true) {
-      return 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।';
-    } else if (isHi == false) {
-      return 'Something went wrong. Please try again.';
+    if (lang != null) {
+      return switch (lang) {
+        Language.hi => 'कुछ गलत हो गया। कृपया पुनः प्रयास करें।',
+        Language.mr => 'काहीतरी चूक झाली. कृपया पुन्हा प्रयत्न करा.',
+        Language.ta => 'ஏதோ தவறு நடந்துவிட்டது. மீண்டும் முயற்சிக்கவும்.',
+        Language.te => 'ఏదో తప్పు జరిగింది. దయచేసి మళ్లీ ప్రయత్నించండి.',
+        Language.gu => 'કંઈક ખોટું થયું. કૃપા કરીને ફરી પ્રયાસ કરો.',
+        Language.bn => 'কিছু ভুল হয়েছে। দয়া করে আবার চেষ্টা করুন।',
+        Language.en => 'Something went wrong. Please try again.',
+      };
     }
     return 'Something went wrong. Please try again. / कुछ गलत हो गया। कृपया पुनः प्रयास करें।';
   }
@@ -107,6 +127,7 @@ class GeminiService {
     File imageFile, {
     String? userId,
     List<Map<String, dynamic>>? history,
+    Language language = Language.en,
   }) async {
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     if (apiKey.isEmpty) {
@@ -161,6 +182,8 @@ No artisan pricing history is available. Estimate a fair local Indian market pri
     }
 
     final promptText = """
+You are a helpful assistant for Indian rural artisans. You must strictly reply in ${language.displayName} native script.
+
 You are a product cataloging and pricing expert for Indian local artisans and craftspeople selling on ONDC / Handora.
 
 Look at the image carefully and identify what the item actually is.
@@ -277,6 +300,7 @@ Rules:
   static Future<Map<String, dynamic>> processVoiceProductEdit({
     required File audioFile,
     required Product currentProduct,
+    Language language = Language.en,
   }) async {
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     if (apiKey.isEmpty) {
@@ -291,8 +315,10 @@ Rules:
     );
 
     final promptText = """
+You are a helpful assistant for Indian rural artisans. You must strictly reply in ${language.displayName} native script.
+
 You are an AI assistant updating product catalog details for a local artisan on ONDC.
-Listen carefully to the user's spoken voice instructions in this audio clip (which may be in Hindi, English, or Hinglish).
+Listen carefully to the user's spoken voice instructions in this audio clip (which may be in ${language.displayName}, Hindi, English, or Hinglish).
 Compare the user's voice instructions with the current product details below:
 - Current Title (EN): ${currentProduct.nameEn}
 - Current Title (HI): ${currentProduct.nameHi}
@@ -305,7 +331,7 @@ Instructions:
 2. If the user mentions a new price, update "price_in_rupees" with that integer (in INR).
 3. If the user mentions changing the title or description, update "name_en", "name_hi", or "description".
 4. If a field was NOT changed or mentioned in the audio, KEEP the current value.
-5. Create a concise, natural confirmation message of what was changed in English ("summary_en") and Hindi ("summary_hi").
+5. Create a concise, natural confirmation message of what was changed in ${language.displayName} native script ("summary_localized"), in English ("summary_en") and Hindi ("summary_hi").
    Example: "Product price updated to ₹500" / "कीमत बदलकर ₹500 कर दी गई है"
 
 Output STRICTLY valid JSON with no markdown code blocks, matching this schema:
@@ -316,7 +342,8 @@ Output STRICTLY valid JSON with no markdown code blocks, matching this schema:
   "description": "${currentProduct.description}",
   "category": "${currentProduct.category}",
   "summary_en": "Product details updated",
-  "summary_hi": "उत्पाद की जानकारी अपडेट कर दी गई है"
+  "summary_hi": "उत्पाद की जानकारी अपडेट कर दी गई है",
+  "summary_localized": "Product details updated"
 }
 """;
 

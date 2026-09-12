@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../models/order.dart';
 import '../theme/palette.dart';
@@ -52,20 +52,21 @@ class RecentOrders extends StatelessWidget {
     };
   }
 
-  String _getStatusLabel(String status, bool isHi) {
+  String _getStatusLabel(String status, Language lang) {
+    final s = kStrings[lang] ?? kStrings[Language.en]!;
     return switch (status.toLowerCase()) {
-      'new' || 'new_order' => isHi ? 'नया ऑर्डर' : 'New Order',
-      'processing' => isHi ? 'तैयारी में' : 'Processing',
-      'shipped' => isHi ? 'भेज दिया' : 'Shipped',
-      'delivered' => isHi ? 'डिलीवर हुआ' : 'Delivered',
-      'cancelled' => isHi ? 'रद्द' : 'Cancelled',
+      'new' || 'new_order' => s.orderStatusNew,
+      'processing' => s.orderStatusProcessing,
+      'shipped' => s.orderStatusShipped,
+      'delivered' => s.orderStatusDelivered,
+      'cancelled' => s.orderStatusCancelled,
       _ => status,
     };
   }
 
   @override
   Widget build(BuildContext context) {
-    final isHi = language == Language.hi;
+    final s = kStrings[language] ?? kStrings[Language.en]!;
     final dark = Theme.of(context).brightness == Brightness.dark;
 
     if (orders.isEmpty) {
@@ -86,7 +87,7 @@ class RecentOrders extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                isHi ? 'अभी कोई ऑर्डर नहीं है' : 'No orders yet',
+                s.noOrders,
                 style: const TextStyle(color: AppColors.ink500, fontSize: 16),
               ),
             ),
@@ -111,7 +112,7 @@ class RecentOrders extends StatelessWidget {
               ),
             ),
             Text(
-              '${orders.length} ${isHi ? "ऑर्डर" : "orders"}',
+              '${orders.length} ${language == Language.en ? "orders" : "ऑर्डर"}',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -121,15 +122,16 @@ class RecentOrders extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        ...orders.map((o) => _orderTile(context, o, isHi, dark)),
+        ...orders.map((o) => _orderTile(context, o, s, dark)),
       ],
     );
   }
 
-  Widget _orderTile(BuildContext context, Order o, bool isHi, bool dark) {
-    final name = isHi ? o.productHi : o.productEn;
+  Widget _orderTile(BuildContext context, Order o, DashboardStrings s, bool dark) {
+    final isIndic = language != Language.en;
+    final name = (isIndic && o.productHi.isNotEmpty) ? o.productHi : o.productEn;
     final statusColor = _getStatusColor(o.status);
-    final statusLabel = _getStatusLabel(o.status, isHi);
+    final statusLabel = _getStatusLabel(o.status, language);
 
     return GestureDetector(
       onTap: () => _openOrderDetails(context, o),
@@ -259,7 +261,15 @@ class RecentOrders extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    isHi ? 'ऑर्डर प्रबंधित करें व WhatsApp पर भेजें' : 'Manage & WhatsApp Buyer',
+                    switch (language) {
+                      Language.hi => 'ऑर्डर प्रबंधित करें व WhatsApp पर भेजें',
+                      Language.mr => 'ऑर्डर व्यवस्थापित करा व WhatsApp वर पाठवा',
+                      Language.ta => 'ஆர்டரை நிர்வகித்து WhatsApp இல் அனுப்பவும்',
+                      Language.te => 'ఆర్డర్ నిర్వహించి WhatsApp లో పంపండి',
+                      Language.gu => 'ઓર્ડર મેનેજ કરો અને WhatsApp મોકલો',
+                      Language.bn => 'অর্ডার পরিচালনা করুন ও WhatsApp এ পাঠান',
+                      Language.en => 'Manage & WhatsApp Buyer',
+                    },
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,

@@ -91,26 +91,23 @@ class ProductCard extends StatelessWidget {
   }
 
   void _showDeleteDialog(BuildContext context, String productName) {
-    final isHi = language == Language.hi;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          isHi ? 'उत्पाद हटाएं?' : 'Delete Product?',
+          strings.deleteProductConfirmTitle,
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         content: Text(
-          isHi
-              ? 'क्या आप वाकई "$productName" को अपने कैटलॉग और ONDC से हटाना चाहते हैं?'
-              : 'Are you sure you want to remove "$productName" from your catalog & ONDC?',
+          '${strings.deleteProductConfirmMessage}\n\n"$productName"',
           style: const TextStyle(fontSize: 14, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              isHi ? 'रद्द करें' : 'Cancel',
+              strings.cancel,
               style: const TextStyle(color: AppColors.ink500, fontWeight: FontWeight.w600),
             ),
           ),
@@ -125,13 +122,18 @@ class ProductCard extends StatelessWidget {
               Navigator.pop(ctx);
               await context.read<DataProvider>().deleteProduct(product.id);
               if (context.mounted) {
+                final deletedMsg = switch (language) {
+                  Language.hi => 'उत्पाद कैटलॉग और ONDC से हटा दिया गया',
+                  Language.mr => 'उत्पादन कॅटलॉग आणि ONDC वरून हटवले गेले',
+                  Language.ta => 'தயாரிப்பு பட்டியல் மற்றும் ONDC-லிருந்து நீக்கப்பட்டது',
+                  Language.te => 'ఉత్పత్తి కేటలాగ్ మరియు ONDC నుండి తొలగించబడింది',
+                  Language.gu => 'પ્રોડક્ટ કેટલોગ અને ONDC પરથી દૂર કરવામાં આવી',
+                  Language.bn => 'পণ্যটি ক্যাটালগ এবং ONDC থেকে সরানো হয়েছে',
+                  Language.en => 'Product removed from catalog & ONDC',
+                };
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      isHi
-                          ? 'उत्पाद कैटलॉग और ONDC से हटा दिया गया'
-                          : 'Product removed from catalog & ONDC',
-                    ),
+                    content: Text(deletedMsg),
                     duration: const Duration(seconds: 2),
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -139,7 +141,7 @@ class ProductCard extends StatelessWidget {
               }
             },
             child: Text(
-              isHi ? 'हटाएं' : 'Delete',
+              strings.delete,
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
@@ -151,7 +153,8 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final live = product.status == ProductStatus.live;
-    final name = language == Language.hi ? product.nameHi : product.nameEn;
+    final isIndic = language != Language.en;
+    final name = (isIndic && product.nameHi.isNotEmpty) ? product.nameHi : product.nameEn;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final isSynced = product.isSynced;
 
@@ -164,16 +167,17 @@ class ProductCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Image container with 4:3 aspect ratio
           Stack(
             children: [
               AspectRatio(
-                aspectRatio: 1,
+                aspectRatio: 4 / 3,
                 child: _buildImage(product.image),
               ),
 
-              // Unsynced / Offline badge indicator overlay
+              // Offline/Unsynced chip top left
               if (!isSynced)
                 Positioned(
                   top: 8,
@@ -201,7 +205,7 @@ class ProductCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          language == Language.hi ? 'सिंक बाकी' : 'Offline',
+                          strings.offline,
                           style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -262,7 +266,7 @@ class ProductCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       !isSynced
-                          ? (language == Language.hi ? 'सिंक होना बाकी' : 'Pending Sync')
+                          ? strings.syncPending
                           : (live ? strings.statusLive : strings.statusDraft),
                       style: TextStyle(
                         fontSize: 12,

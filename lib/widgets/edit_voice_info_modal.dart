@@ -161,6 +161,7 @@ class _EditVoiceInfoModalState extends State<EditVoiceInfoModal>
       final parsed = await GeminiService.processVoiceProductEdit(
         audioFile: file,
         currentProduct: widget.product,
+        language: appLang,
       );
 
       // Clean up temp audio file
@@ -176,8 +177,12 @@ class _EditVoiceInfoModalState extends State<EditVoiceInfoModal>
 
       final summaryEn = parsed['summary_en'] as String? ?? 'Product updated to ₹$newPrice';
       final summaryHi = parsed['summary_hi'] as String? ?? 'उत्पाद की जानकारी अपडेट कर दी गई है';
+      final summaryLocalized = parsed['summary_localized'] as String? ??
+          (appLang == Language.hi ? summaryHi : summaryEn);
 
-      final spokenText = appLang == Language.hi ? summaryHi : summaryEn;
+      final spokenText = appLang == Language.en
+          ? summaryEn
+          : (appLang == Language.hi ? summaryHi : summaryLocalized);
 
       final updated = widget.product.copyWith(
         nameEn: newNameEn,
@@ -225,12 +230,19 @@ class _EditVoiceInfoModalState extends State<EditVoiceInfoModal>
   Future<void> _speakConfirmation(String text, Language language) async {
     try {
       await _tts.stop();
-      final code = (language == Language.hi || RegExp(r'[\u0900-\u097F]').hasMatch(text))
-          ? 'hi-IN'
-          : 'en-IN';
-      await _tts.setLanguage(code);
+      // Explicitly set language to active language's localeCode with safe fallback
+      try {
+        await _tts.setLanguage(language.localeCode);
+      } catch (e) {
+        debugPrint('⚠️ TTS setLanguage(${language.localeCode}) failed, falling back to en-IN: $e');
+        try {
+          await _tts.setLanguage('en-IN');
+        } catch (_) {}
+      }
       await _tts.speak(text);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('TTS speak error: $e');
+    }
   }
 
   Widget _buildProductThumbnail(String image) {

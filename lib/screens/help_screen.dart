@@ -6,7 +6,6 @@ import '../theme/palette.dart';
 import '../theme/shadows.dart';
 import '../widgets/help_card.dart';
 import '../widgets/voice_assistant_modal.dart';
-import '../l10n/strings.dart';
 import 'login_screen.dart';
 
 class HelpScreen extends StatefulWidget {
@@ -50,7 +49,7 @@ class _HelpScreenState extends State<HelpScreen>
 
   void _handleLogout() {
     final app = context.read<AppState>();
-    final isHi = app.language == Language.hi;
+    final s = app.strings;
 
     showDialog(
       context: context,
@@ -58,7 +57,7 @@ class _HelpScreenState extends State<HelpScreen>
         backgroundColor: AppColors.surfaceIvory,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          isHi ? 'लॉग आउट करें?' : 'Log Out?',
+          s.logoutConfirmTitle,
           style: const TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 20,
@@ -67,9 +66,7 @@ class _HelpScreenState extends State<HelpScreen>
           ),
         ),
         content: Text(
-          isHi
-              ? 'क्या आप वाकई लॉग आउट करना चाहते हैं?'
-              : 'Are you sure you want to log out?',
+          s.logoutConfirmMessage,
           style: const TextStyle(
             fontSize: 15,
             color: AppColors.onSurfaceVariant,
@@ -80,7 +77,7 @@ class _HelpScreenState extends State<HelpScreen>
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              isHi ? 'रद्द करें' : 'Cancel',
+              s.cancel,
               style: const TextStyle(
                 color: AppColors.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
@@ -107,7 +104,7 @@ class _HelpScreenState extends State<HelpScreen>
               ),
             ),
             child: Text(
-              isHi ? 'लॉग आउट' : 'Log Out',
+              s.logout,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
@@ -121,7 +118,6 @@ class _HelpScreenState extends State<HelpScreen>
     final app = context.watch<AppState>();
     final s = app.strings;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final isHi = app.language == Language.hi;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -240,7 +236,7 @@ class _HelpScreenState extends State<HelpScreen>
         // ── Logout Button ──
         if (app.isAuthenticated) ...[
           const SizedBox(height: 32),
-          _buildLogoutButton(isHi),
+          _buildLogoutButton(app),
         ],
       ]),
     );
@@ -382,7 +378,8 @@ class _HelpScreenState extends State<HelpScreen>
   }
 
   // ── Logout Button ──
-  Widget _buildLogoutButton(bool isHi) {
+  Widget _buildLogoutButton(AppState app) {
+    final s = app.strings;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
@@ -409,29 +406,14 @@ class _HelpScreenState extends State<HelpScreen>
                   color: Color(0xFFDC2626),
                 ),
                 const SizedBox(width: 10),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      isHi ? 'लॉग आउट' : 'Log Out',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFDC2626),
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      isHi ? 'Log Out' : 'लॉग आउट',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFFDC2626).withAlpha(160),
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                  ],
+                Text(
+                  s.logout,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFDC2626),
+                    fontFamily: 'Inter',
+                  ),
                 ),
               ],
             ),
